@@ -97,9 +97,9 @@ async def browse_to_action(job_name: str, q: aio.Queue):
 
         action_url = await q.get()
         await page.goto(action_url)
-        await page.waitForSelector(f"#workflow-job-name-{job_name}")
-
-        await page.click(f"#workflow-job-name-{job_name}")
+        link_handle = await page.waitForSelector(f"#workflow-job-name-{job_name}")
+        href = await page.evaluate("(element) => element.href", link_handle)
+        await page.goto(href)
         await aio.sleep(1)
     finally:
         if page:
