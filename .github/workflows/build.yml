@@ -16,5 +16,5 @@ jobs:
         run: |
           while true; do
             sleep 2
-            echo "something"
+            date "+%F@%T"
           done
