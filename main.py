@@ -186,6 +186,9 @@ def is_completed(x: str) -> bool:
 
 
 async def main(commit_sha: str, job_name: str, *_: Any) -> None:
+    if commit_sha == len(commit_sha) * "0":
+        return
+
     loop = aio.get_running_loop()
     loop.add_signal_handler(signal.SIGINT, lambda *_: sys.exit(0), tuple())
 
