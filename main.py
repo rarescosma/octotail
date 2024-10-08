@@ -1,4 +1,7 @@
 #!/usr/bin/env -S /bin/sh -c 'exec "$(dirname $(readlink -f "$0"))/.venv/bin/python3" "$0" "$@"'
+"""
+Basically a curse.
+"""
 import asyncio as aio
 import json
 import os
@@ -8,7 +11,7 @@ import sys
 import threading
 import time
 from contextlib import suppress
-from typing import Iterable, Tuple, cast
+from typing import Any, Iterable, Tuple, cast
 
 from fake_useragent import UserAgent
 from mitmproxy.http import HTTPFlow
@@ -52,12 +55,12 @@ CHROME_ARGS = [
     "--password-store=basic",
     "--use-mock-keychain",
     '--lang="en-US"',
-    '--user-agent="{0}"'.format(UserAgent().random),
+    f'--user-agent="{UserAgent().random}"',
     "--proxy-server=127.0.0.1:8080",
 ]
 
 
-def run_mitmproxy():
+def run_mitmproxy() -> None:
     # Create a subprocess
     proxy = subprocess.Popen(
         ["mitmdump", "-w", PROXY_FILE],
@@ -69,7 +72,7 @@ def run_mitmproxy():
     proxy.wait()
 
 
-async def browse_to_action(job_name: str, q: aio.Queue):
+async def browse_to_action(job_name: str, q: aio.Queue) -> None:
     browser = page = None
     try:
         browser = await launch(
@@ -108,9 +111,9 @@ async def browse_to_action(job_name: str, q: aio.Queue):
             await browser.close()
 
 
-async def get_action_url(commit_sha: str, q: aio.Queue):
+async def get_action_url(commit_sha: str, q: aio.Queue) -> None:
     # farm out to gh CLI the listing of a job that matches the SHA
-    cmd = f"gh run list -c {commit_sha} --json headBranch,headSha,name,number,url,status,databaseId,workflowDatabaseId"
+    cmd = f"gh run list -c {commit_sha} --json url,status"
 
     # "just put a retry loop around it"
     res = None
@@ -142,7 +145,7 @@ def url_and_sub(path: str) -> Tuple[str, str]:
         return flow.request.url, msgs[0]
 
 
-async def stream_it(url: str, sub: str):
+async def stream_it(url: str, sub: str) -> None:
     ws_url = "wss://" + url.removeprefix("https://")
 
     headers = {
@@ -177,11 +180,12 @@ def extract_line(x: str) -> str:
 
 def is_completed(x: str) -> bool:
     with suppress(Exception):
-        x = json.loads(x)
-        return x["data"]["status"] == "completed" and "conclusion" in x["data"]
+        dec = json.loads(x)
+        return dec["data"]["status"] == "completed" and "conclusion" in dec["data"]
+    return False
 
 
-async def main(commit_sha: str, job_name: str, *_):
+async def main(commit_sha: str, job_name: str, *_: Any) -> None:
     loop = aio.get_running_loop()
     loop.add_signal_handler(signal.SIGINT, lambda *_: sys.exit(0), tuple())
 
@@ -189,17 +193,16 @@ async def main(commit_sha: str, job_name: str, *_):
 
     # 1. boot up mitmproxy in a separate thread
     proxy_thread = threading.Thread(target=run_mitmproxy)
-    print(f"started mitmproxy")
+    print("started mitmproxy")
     proxy_thread.start()
 
-    q = aio.Queue(maxsize=1)
+    q: aio.Queue[str] = aio.Queue(maxsize=1)
 
     # 2. use gh CLI to get the action URL
     # 3. log into github via headless browser
     await aio.gather(get_action_url(commit_sha, q), browse_to_action(job_name, q))
 
     # 4. murder the proxy
-    global proxy_handle
     if proxy_handle is not None:
         cast(subprocess.Popen, proxy_handle).send_signal(signal.SIGINT)
 
