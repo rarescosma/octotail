@@ -14,16 +14,7 @@ jobs:
       - name: Sleep a little while
         shell: bash
         run: |
-          max_iterations=20
-          iteration_count=0
-          
           while true; do
             date "+%F@%T"
-            ((iteration_count++))
-          
-            if [ $iteration_count -ge $max_iterations ]; then
-              echo "Reached maximum iterations"
-              break
-            fi
             sleep 2
           done
