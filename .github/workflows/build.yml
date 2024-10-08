@@ -7,11 +7,14 @@ on:
 
 jobs:
   go-to-sleep:
-    name: get-version
+    name: go-to-sleep
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Sleep a little while
         shell: bash
         run: |
-          sleep 300
+          while true; do
+            sleep 2
+            echo "something"
+          done
