@@ -8,7 +8,7 @@ import sys
 import threading
 import time
 from contextlib import suppress
-from typing import List, Tuple, cast
+from typing import Iterable, Tuple, cast
 
 from fake_useragent import UserAgent
 from mitmproxy.http import HTTPFlow
@@ -132,10 +132,9 @@ async def get_action_url(commit_sha: str, q: aio.Queue):
 def url_and_sub(path: str) -> Tuple[str, str]:
     with open(path, "rb") as f:
         reader = FlowReader(f)
-        flows = cast(List[HTTPFlow], list(reader.stream()))
         wss = [
             flow
-            for flow in flows
+            for flow in cast(Iterable[HTTPFlow], reader.stream())
             if flow.websocket is not None and flow.request.host.startswith("alive.github.com")
         ]
         flow = wss[-1]
