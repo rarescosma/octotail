@@ -77,7 +77,7 @@ async def browse_to_action(job_name: str, q: aio.Queue) -> None:
     try:
         browser = await launch(
             # headless=False,
-            # executablePath="/usr/bin/chromium",
+            executablePath="/usr/bin/chromium",
             headless=True,
             options={"args": CHROME_ARGS},
         )
