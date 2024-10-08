@@ -11,10 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Sleep a little while
+      - name: Install rust
         shell: bash
         run: |
-          while true; do
-            date "+%F@%T"
-            sleep 2
-          done
+          rustup toolchain install nightly --profile minimal
+      - uses: extractions/setup-just@v2
