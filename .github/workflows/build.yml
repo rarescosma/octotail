@@ -16,3 +16,7 @@ jobs:
         run: |
           rustup toolchain install nightly --profile minimal
       - uses: extractions/setup-just@v2
+      - name: Install udeps
+        shell: bash
+        run: |
+          cargo install cargo-expand
