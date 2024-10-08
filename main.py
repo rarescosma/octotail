@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S /bin/sh -c 'exec "$(dirname $(readlink -f "$0"))/.venv/bin/python3" "$0" "$@"'
 import asyncio as aio
 import json
 import os
