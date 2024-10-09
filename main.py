@@ -147,7 +147,8 @@ async def browse_to_action(opts: Opts, q: aio.Queue) -> RuntimeError | None:
         link_handle = await page.waitForSelector(f"#workflow-job-name-{opts.job_name}")
         href = await page.evaluate("(element) => element.href", link_handle)
         await page.goto(href)
-        await aio.sleep(1)
+        # should come up with a better way to wait for the proper sockets...
+        await aio.sleep(3)
     finally:
         await cleanup(page, browser)
 
