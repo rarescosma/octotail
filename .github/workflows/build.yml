@@ -19,4 +19,4 @@ jobs:
       - name: Install udeps
         shell: bash
         run: |
-          cargo install cargo-expand
+          cargo install cargo-bloat
