@@ -32,7 +32,7 @@ TOKEN = os.getenv("_GH_TOKEN")
 PROXY_FILE = Path(xdg_data_home) / "action-cat" / "proxy.out"
 COOKIE_JAR = Path(xdg_cache_home) / "action-cat" / "gh-cookies.json"
 DEBUG = bool(os.getenv("DEBUG"))
-HEADLESS = True
+HEADLESS = os.getenv("_HEADLESS") != "0"
 
 CHROME_ARGS = [
     '--cryptauth-http-host ""',
@@ -171,34 +171,37 @@ async def get_action_url(commit_sha: str, q: aio.Queue) -> None:
 
     # "just put a retry loop around it"
     for _ in range(0, 10):
-        p = await aio.create_subprocess_shell(
+        gh = await aio.create_subprocess_shell(
             cmd,
             stdout=aio.subprocess.PIPE,
             stderr=aio.subprocess.PIPE,
         )
-        out, err = await p.communicate()
-        if p.returncode == 0:
-            with suppress(Exception):
-                decoded = json.loads(out.decode().strip())[0]
-                if not decoded.get("status") in [
-                    "queued",
-                    "in_progress",
-                    "requested",
-                    "waiting",
-                    "action_required",
-                ]:
-                    _log(f"cannot process action in state: '{decoded.get("status")}'")
-                    _log(f"try:\n\n\tgh run view {decoded.get("databaseId")} --log\n")
-                    _log(f"or try browsing to:\n\n\t{decoded.get("url")}\n")
-                    return await q.put(RuntimeError("invalid action state"))
-
-                url = decoded["url"]
-                _log(f"success: {url}")
-                return await q.put(url)
-            if DEBUG:
-                _log(f"gh out: {out.decode()}; gh err: {err.decode()}")
-        else:
+        out, err = await gh.communicate()
+        if gh.returncode != 0:
             _log(f"gh error: {err.decode().strip()}")
+            await aio.sleep(1)
+            continue
+
+        with suppress(Exception):
+            decoded = json.loads(out.decode().strip())[0]
+            if not decoded.get("status") in [
+                "queued",
+                "in_progress",
+                "requested",
+                "waiting",
+                "action_required",
+            ]:
+                _log(f"cannot process action in state: '{decoded.get("status")}'")
+                _log(f"try:\n\n\tgh run view {decoded.get("databaseId")} --log\n")
+                _log(f"or try browsing to:\n\n\t{decoded.get("url")}\n")
+                return await q.put(RuntimeError("invalid action state"))
+
+            url = decoded["url"]
+            _log(f"success: {url}")
+            return await q.put(url)
+        if DEBUG:
+            _log(f"gh out: {out.decode()}; gh err: {err.decode()}")
+
         await aio.sleep(1)
 
     _log("giving up")
@@ -296,10 +299,9 @@ async def main() -> None:
         _kill_proxy()
         sys.exit(1)
 
-    url_q: aio.Queue[str | Exception] = aio.Queue(maxsize=1)
-
     # 2. use gh CLI to get the action URL
     # 3. log into github via headless browser
+    url_q: aio.Queue[str | Exception] = aio.Queue(maxsize=1)
     abort = False
     for ret in await aio.gather(
         get_action_url(commit_sha, url_q), browse_to_action(job_name, url_q), return_exceptions=True
