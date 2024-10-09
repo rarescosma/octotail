@@ -5,21 +5,21 @@ Basically a curse.
 import asyncio as aio
 import inspect
 import json
+import multiprocessing
 import os
-import queue
 import signal
-import subprocess
+import socket
 import sys
-import threading
 import time
 from contextlib import suppress
 from pathlib import Path
-from typing import Any, Iterable, Optional, Tuple, cast
+from typing import Iterable, Optional, Tuple, cast
 
 import websockets.client
 from fake_useragent import UserAgent
 from mitmproxy.http import HTTPFlow
 from mitmproxy.io import FlowReader
+from mitmproxy.tools.main import mitmdump
 from pyppeteer import launch
 from pyppeteer.browser import Browser
 from pyppeteer.page import Page
@@ -32,7 +32,7 @@ TOKEN = os.getenv("_GH_TOKEN")
 PROXY_FILE = Path(xdg_data_home) / "action-cat" / "proxy.out"
 COOKIE_JAR = Path(xdg_cache_home) / "action-cat" / "gh-cookies.json"
 DEBUG = bool(os.getenv("DEBUG"))
-HEADLESS = bool(os.getenv("_HEADLESS", "1"))
+HEADLESS = True
 
 CHROME_ARGS = [
     '--cryptauth-http-host ""',
@@ -73,18 +73,23 @@ def _log(msg: str) -> None:
     print(f"[{fn}]: {msg}")
 
 
-def run_mitmproxy(q: queue.Queue) -> None:
+def run_mitmproxy() -> None:
     PROXY_FILE.parent.mkdir(parents=True, exist_ok=True)
-    try:
-        proxy = subprocess.Popen(
-            ["mitmdump", "-w", str(PROXY_FILE)],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
-        q.put(proxy)
-        proxy.wait()
-    except Exception as e:
-        q.put(e)
+    sys.argv = f"mitmdump -q -w {PROXY_FILE}".split()
+    mitmdump()
+
+
+async def check_proxy(proxy_ps: multiprocessing.Process) -> bool:
+    for _ in range(0, 50):
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        res = sock.connect_ex(("127.0.0.1", 8080))
+        sock.close()
+        if res == 0:
+            return True
+        await aio.sleep(0.2)
+        if not proxy_ps.is_alive():
+            return False
+    return False
 
 
 async def browse_to_action(job_name: str, q: aio.Queue) -> RuntimeError | None:
@@ -240,7 +245,7 @@ async def stream_it(url: str, sub: str) -> None:
             await websocket.send(sub)
             async for msg in websocket:
                 if is_completed(msg):
-                    sys.exit(0)
+                    return
                 print(extract_line(msg))
     except aio.CancelledError:
         _log("cancelled")
@@ -262,7 +267,12 @@ def is_completed(x: str) -> bool:
     return False
 
 
-async def main(commit_sha: str, job_name: str, *_: Any) -> None:
+async def main() -> None:
+    # FIXME - better env and arg error handling
+    if len(sys.argv) < 3:
+        sys.exit(0)
+
+    (commit_sha, job_name) = sys.argv[1:3]
     if commit_sha == len(commit_sha) * "0":
         return
 
@@ -272,15 +282,18 @@ async def main(commit_sha: str, job_name: str, *_: Any) -> None:
 
     _log(f"processing commit SHA: '{commit_sha}'")
 
-    proxy_q: queue.Queue[subprocess.Popen | Exception] = queue.Queue(maxsize=1)
-
     # 1. boot up mitmproxy in a separate thread
     _log("starting mitmproxy")
-    proxy_thread = threading.Thread(target=run_mitmproxy, args=(proxy_q,))
-    proxy_thread.start()
-    proxy_handle = proxy_q.get()
-    if isinstance(proxy_handle, Exception):
-        _log(f"got exception: {proxy_handle}")
+    proxy_ps = multiprocessing.Process(target=run_mitmproxy)
+    proxy_ps.start()
+
+    def _kill_proxy() -> None:
+        proxy_ps.terminate()
+        proxy_ps.join()
+
+    if not await check_proxy(proxy_ps):
+        _log("proxy didn't go live; bailing...")
+        _kill_proxy()
         sys.exit(1)
 
     url_q: aio.Queue[str | Exception] = aio.Queue(maxsize=1)
@@ -296,8 +309,7 @@ async def main(commit_sha: str, job_name: str, *_: Any) -> None:
             abort = True
 
     # 4. murder the proxy
-    proxy_handle.send_signal(signal.SIGINT)
-    proxy_thread.join()
+    _kill_proxy()
     if abort:
         sys.exit(1)
 
@@ -310,6 +322,4 @@ async def main(commit_sha: str, job_name: str, *_: Any) -> None:
 
 
 if __name__ == "__main__":
-    if len(sys.argv) < 3:
-        sys.exit(0)
-    aio.run(main(*sys.argv[1:]))
+    aio.run(main())
