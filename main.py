@@ -27,8 +27,8 @@ from pyppeteer.page import Page
 from pyppeteer_stealth import stealth
 from xdg.BaseDirectory import xdg_cache_home, xdg_data_home
 
-PROXY_FILE = Path(xdg_data_home) / "action-cat" / "proxy.out"
-COOKIE_JAR = Path(xdg_cache_home) / "action-cat" / "gh-cookies.json"
+PROXY_FILE = Path(xdg_data_home) / "octotail" / "proxy.out"
+COOKIE_JAR = Path(xdg_cache_home) / "octotail" / "gh-cookies.json"
 DEBUG = os.getenv("DEBUG") not in ["0", "false", "False", None]
 
 

@@ -1,4 +1,4 @@
-# action-cat
+# octotail
 
 Live tail GitHub Action runs on `git push`. It's cursed.
 
@@ -15,8 +15,8 @@ Live tail GitHub Action runs on `git push`. It's cursed.
 Clone the repo:
 
 ```shell
-git clone https://github.com/rarescosma/action-cat.git
-cd action-cat
+git clone https://github.com/rarescosma/octotail.git
+cd octotail
 ```
 
 Make a virtual environment, activate it, and install requirements:
@@ -103,7 +103,7 @@ if you get the GitHub action logs streaming right back:
 
 ```shell
 cd your-original-repo
-git commit --allow-empty -m 'test action-cat'
+git commit --allow-empty -m 'test octotail'
 git push proxy
 ```
 
