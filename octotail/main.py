@@ -17,7 +17,7 @@ from pyppeteer.page import Page
 from pyppeteer_stealth import stealth
 from xdg.BaseDirectory import xdg_cache_home, xdg_data_home
 
-from .browser import launch_browser, login_flow, nom_cookies
+from .browser import WS_HEADERS, launch_browser, login_flow, nom_cookies
 from .cli import Opts, cli
 from .mitm import get_websocket, start_proxy
 from .utils import log, run_cmd
@@ -105,19 +105,9 @@ async def get_run_url(opts: Opts, q: aio.Queue) -> None:
 async def stream_it(url: str, sub: str) -> None:
     ws_url = "wss://" + url.removeprefix("https://")
 
-    headers = {
-        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:131.0) Gecko/20100101 Firefox/131.0",
-        "Origin": "https://github.com",
-        "Sec-Fetch-Dest": "empty",
-        "Sec-Fetch-Mode": "websocket",
-        "Sec-Fetch-Site": "same-site",
-        "Pragma": "no-cache",
-        "Cache-Control": "no-cache",
-    }
-
     websocket = None
     try:
-        async with websockets.client.connect(ws_url, extra_headers=headers) as websocket:
+        async with websockets.client.connect(ws_url, extra_headers=WS_HEADERS) as websocket:
             await websocket.send(sub)
             async for msg in websocket:
                 if (conclusion := is_completed(msg)) is not None:

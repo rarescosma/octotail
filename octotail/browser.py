@@ -46,6 +46,16 @@ CHROME_ARGS = [
     "--proxy-server=127.0.0.1:8080",
 ]
 
+WS_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:131.0) Gecko/20100101 Firefox/131.0",
+    "Origin": "https://github.com",
+    "Sec-Fetch-Dest": "empty",
+    "Sec-Fetch-Mode": "websocket",
+    "Sec-Fetch-Site": "same-site",
+    "Pragma": "no-cache",
+    "Cache-Control": "no-cache",
+}
+
 
 async def launch_browser(headless: bool) -> Browser:
     return await launch(
