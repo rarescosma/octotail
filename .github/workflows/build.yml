@@ -6,17 +6,21 @@ on:
       - main
 
 jobs:
-  go-to-sleep:
-    name: go-to-sleep
+  pycheck:
+    name: pycheck
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Install rust
+      - name: Prepare pycheck
         shell: bash
         run: |
-          rustup toolchain install nightly --profile minimal
-      - uses: extractions/setup-just@v2
-      - name: Install udeps
+          wget https://static.getbetter.ro/pycheck
+          chmod +x pycheck
+          python3 -m venv .venv
+          source .venv/bin/activate
+          pip3 install -q -r requirements-dev.txt
+      - name: Pycheck
         shell: bash
         run: |
-          cargo install cargo-edit
+          source .venv/bin/activate
+          ./pycheck main.py

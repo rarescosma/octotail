@@ -13,8 +13,9 @@ import sys
 import time
 from contextlib import suppress
 from pathlib import Path
-from typing import Iterable, Optional, Tuple, cast, Annotated, NamedTuple
+from typing import Annotated, Iterable, NamedTuple, Optional, Tuple, cast
 
+import typer
 import websockets.client
 from fake_useragent import UserAgent
 from mitmproxy.http import HTTPFlow
@@ -25,7 +26,6 @@ from pyppeteer.browser import Browser
 from pyppeteer.page import Page
 from pyppeteer_stealth import stealth
 from xdg.BaseDirectory import xdg_cache_home, xdg_data_home
-import typer
 
 PROXY_FILE = Path(xdg_data_home) / "action-cat" / "proxy.out"
 COOKIE_JAR = Path(xdg_cache_home) / "action-cat" / "gh-cookies.json"
@@ -326,6 +326,7 @@ async def main(opts: Opts) -> None:
         _log(f"could not extract websockets URL or subs from {PROXY_FILE}")
 
 
+# pylint: disable=R0913,R0917
 def typer_main(
     commit_sha: str,
     job_name: str,
