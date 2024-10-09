@@ -7,6 +7,7 @@ import json
 import os
 import sys
 from contextlib import suppress
+from functools import partial
 from pathlib import Path
 from typing import Optional
 
@@ -20,14 +21,14 @@ from xdg.BaseDirectory import xdg_cache_home, xdg_data_home
 from .browser import WS_HEADERS, launch_browser, login_flow, nom_cookies
 from .cli import Opts, cli
 from .mitm import get_websocket, start_proxy
-from .utils import log, run_cmd
+from .utils import Ok, Result, Retry, log, retries, run_cmd
 
 COOKIE_JAR = Path(xdg_cache_home) / "octotail" / "gh-cookies.json"
 PROXY_FILE = Path(xdg_data_home) / "octotail" / "proxy.out"
 DEBUG = os.getenv("DEBUG") not in ["0", "false", "False", None]
 
 
-async def browse_to_action(opts: Opts, q: aio.Queue) -> RuntimeError | None:
+async def browse_to_action(q: aio.Queue, opts: Opts) -> RuntimeError | None:
     browser = page = None
 
     async def cleanup(_page: Page, _browser: Browser) -> None:
@@ -70,36 +71,32 @@ async def browse_to_action(opts: Opts, q: aio.Queue) -> RuntimeError | None:
     return None
 
 
-async def get_run_url(opts: Opts, q: aio.Queue) -> None:
+@retries(10, 0.5)
+async def get_run_url(opts: Opts) -> Result[str]:
     valid_statuses = ["queued", "in_progress", "requested", "waiting", "action_required"]
     # farm out to gh CLI the listing of a run that matches the SHA
     list_cmd = f"gh run list -c {opts.commit_sha} -w {opts.workflow} --json url,status,databaseId"
 
-    # "just put a retry loop around it"
-    for _ in range(0, 20):
-        out, err, ret_code = await run_cmd(list_cmd)
-        if ret_code != 0:
-            log(f"gh error: {err.decode().strip()}")
-            await aio.sleep(1)
-            continue
+    out, err, ret_code = await run_cmd(list_cmd)
+    if ret_code != 0:
+        log(f"gh error: {err.decode().strip()}")
+        return Retry()
 
-        with suppress(Exception):
-            gh_run = json.loads(out.decode().strip())[0]
+    with suppress(Exception):
+        gh_run = json.loads(out.decode().strip())[0]
 
-            if not gh_run.get("status") in valid_statuses:
-                log(f"cannot process run in state: '{gh_run.get("status")}'")
-                log(f"try:\n\n\tgh run view {gh_run.get("databaseId")} --log\n")
-                log(f"or try browsing to:\n\n\t{gh_run.get("url")}\n")
-                return await q.put(RuntimeError("invalid action state"))
+        if not gh_run.get("status") in valid_statuses:
+            log(f"cannot process run in state: '{gh_run.get("status")}'")
+            log(f"try:\n\n\tgh run view {gh_run.get("databaseId")} --log\n")
+            log(f"or try browsing to:\n\n\t{gh_run.get("url")}\n")
+            return RuntimeError("invalid action state")
 
-            log(f"got run url: {gh_run["url"]}")
-            return await q.put(gh_run["url"])
-        if DEBUG:
-            log(f"gh out: {out.decode()}; gh err: {err.decode()}")
-        await aio.sleep(0.5)
+        log(f"got run url: {gh_run["url"]}")
+        return Ok(gh_run["url"])
 
-    log("giving up")
-    await q.put(RuntimeError("exceeded 'gh run list' retries"))
+    if DEBUG:
+        log(f"gh out: {out.decode()}; gh err: {err.decode()}")
+    return Retry()
 
 
 async def stream_it(url: str, sub: str) -> None:
@@ -147,9 +144,9 @@ async def main(opts: Opts) -> None:
     url_q: aio.Queue[str | Exception] = aio.Queue(maxsize=1)
     abort = False
     for ret in await aio.gather(
-        get_run_url(opts, url_q),
-        browse_to_action(opts, url_q),
-        return_exceptions=False,
+        partial(get_run_url, url_q)(opts),  # pylint: disable=E1121
+        browse_to_action(url_q, opts),
+        return_exceptions=True,
     ):
         if isinstance(ret, Exception):
             log(f"got exception: {ret}")
