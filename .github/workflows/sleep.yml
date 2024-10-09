@@ -6,8 +6,23 @@ on:
       - sleep
 
 jobs:
-  pycheck:
-    name: sleep
+  sleeper_one:
+    name: sleeper_one
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Not awake
+        shell: bash
+        run: |
+          echo "sleeper one here"
+          sleep 10
+          echo "sleeper one here again"
+          sleep 10
+          echo "sleeper one here for the last time"
+          sleep 10
+  sleeper_two:
+    name: sleeper_two
+    needs: ["sleeper_one"]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
