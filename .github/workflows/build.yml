@@ -17,8 +17,6 @@ jobs:
       - name: Prepare pycheck
         shell: bash
         run: |
-          wget https://static.getbetter.ro/pycheck
-          chmod +x pycheck
           python3 -m venv .venv
           source .venv/bin/activate
           pip3 install -q -r requirements-dev.txt
@@ -26,4 +24,4 @@ jobs:
         shell: bash
         run: |
           source .venv/bin/activate
-          ./pycheck octotail
+          ./hacks/pycheck octotail
