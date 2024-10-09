@@ -256,7 +256,8 @@ async def stream_it(url: str, sub: str) -> None:
         async with websockets.client.connect(ws_url, extra_headers=headers) as websocket:
             await websocket.send(sub)
             async for msg in websocket:
-                if is_completed(msg):
+                if (conclusion := is_completed(msg)) is not None:
+                    print(conclusion)
                     return
                 print(extract_line(msg))
     except aio.CancelledError:
@@ -271,12 +272,13 @@ def extract_line(x: str) -> str:
     return ""
 
 
-def is_completed(x: str) -> bool:
+def is_completed(x: str) -> Optional[str]:
     with suppress(Exception):
-        dec = json.loads(x)
-        return dec["data"]["status"] == "completed" and "conclusion" in dec["data"]
+        data = json.loads(x)["data"]
+        if data["status"] == "completed" and "conclusion" in data:
+            return f'job completed; conclusion: {data["conclusion"]}'
     # noinspection PyUnreachableCode
-    return False
+    return None
 
 
 async def main(opts: Opts) -> None:
