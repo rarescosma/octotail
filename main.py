@@ -107,6 +107,7 @@ async def browse_to_action(job_name: str, q: aio.Queue) -> RuntimeError | None:
         await stealth(page)
 
         if not await nom_cookies(page):
+            _log("logging in to GitHub")
             await page.goto("https://github.com/login")
             await page.waitForSelector("#login_field", timeout=30000)
 
@@ -142,7 +143,6 @@ async def nom_cookies(page: Page) -> bool:
     if not COOKIE_JAR.exists():
         return False
 
-    _log("looking at cookie jar")
     cookies = json.loads(COOKIE_JAR.read_text())
 
     if any(is_close_to_expiry(c.get("expires", "-1")) for c in cookies):
@@ -174,7 +174,7 @@ async def get_action_url(commit_sha: str, q: aio.Queue) -> None:
         if p.returncode == 0:
             with suppress(Exception):
                 url = json.loads(out.decode().strip())[0]["url"]
-                _log(f"got action URL: {url}")
+                _log(f"success: {url}")
                 return await q.put(url)
             if DEBUG:
                 _log(f"gh out: {out.decode()}; gh err: {err.decode()}")
@@ -186,7 +186,7 @@ async def get_action_url(commit_sha: str, q: aio.Queue) -> None:
     await q.put(None)
 
 
-def url_and_sub(path: Path) -> Optional[Tuple[str, str]]:
+def get_websocket(path: Path) -> Optional[Tuple[str, str]]:
     if not path.exists() or not path.is_file():
         return None
 
@@ -203,6 +203,7 @@ def url_and_sub(path: Path) -> Optional[Tuple[str, str]]:
         msgs = [m.text for m in flow.websocket.messages if "subscribe" in json.loads(m.text)]
         if not msgs:
             return None
+        _log(f"success: '{flow.request.url}'")
         return flow.request.url, msgs[0]
 
 
@@ -287,9 +288,8 @@ async def main(commit_sha: str, job_name: str, *_: Any) -> None:
         sys.exit(1)
 
     # 5. start streaming
-    if (url_sub := url_and_sub(PROXY_FILE)) is not None:
+    if (url_sub := get_websocket(PROXY_FILE)) is not None:
         ws_url, ws_sub = url_sub
-        _log(f"got websocket URL: '{ws_url}'")
         await stream_it(ws_url, ws_sub)
     else:
         _log(f"could not extract websockets URL or subs from {PROXY_FILE}")
