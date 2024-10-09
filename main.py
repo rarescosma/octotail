@@ -13,7 +13,7 @@ import sys
 import time
 from contextlib import suppress
 from pathlib import Path
-from typing import Iterable, Optional, Tuple, cast
+from typing import Iterable, Optional, Tuple, cast, Annotated, NamedTuple
 
 import websockets.client
 from fake_useragent import UserAgent
@@ -25,14 +25,23 @@ from pyppeteer.browser import Browser
 from pyppeteer.page import Page
 from pyppeteer_stealth import stealth
 from xdg.BaseDirectory import xdg_cache_home, xdg_data_home
+import typer
 
-USER = os.getenv("_GH_USER")
-PASS = os.getenv("_GH_PASS")
-TOKEN = os.getenv("_GH_TOKEN")
 PROXY_FILE = Path(xdg_data_home) / "action-cat" / "proxy.out"
 COOKIE_JAR = Path(xdg_cache_home) / "action-cat" / "gh-cookies.json"
-DEBUG = bool(os.getenv("DEBUG"))
-HEADLESS = os.getenv("_HEADLESS") != "0"
+DEBUG = os.getenv("DEBUG") not in ["0", "false", "False", None]
+
+
+class Opts(NamedTuple):
+    """Holds common options."""
+
+    commit_sha: str
+    job_name: str
+    gh_user: str
+    gh_pass: str
+    gh_token: str
+    headless: bool
+
 
 CHROME_ARGS = [
     '--cryptauth-http-host ""',
@@ -92,7 +101,7 @@ async def check_proxy(proxy_ps: multiprocessing.Process) -> bool:
     return False
 
 
-async def browse_to_action(job_name: str, q: aio.Queue) -> RuntimeError | None:
+async def browse_to_action(opts: Opts, q: aio.Queue) -> RuntimeError | None:
     browser = page = None
 
     async def cleanup(_page: Page, _browser: Browser) -> None:
@@ -103,7 +112,7 @@ async def browse_to_action(job_name: str, q: aio.Queue) -> RuntimeError | None:
 
     try:
         browser = await launch(
-            headless=HEADLESS,
+            headless=opts.headless,
             executablePath="/usr/bin/chromium",
             options={"args": CHROME_ARGS},
         )
@@ -116,15 +125,15 @@ async def browse_to_action(job_name: str, q: aio.Queue) -> RuntimeError | None:
             await page.goto("https://github.com/login")
             await page.waitForSelector("#login_field", timeout=30000)
 
-            await page.type("#login_field", USER)
+            await page.type("#login_field", opts.gh_user)
             await page.keyboard.press("Tab")
-            await page.type("#password", PASS)
+            await page.type("#password", opts.gh_pass)
             await page.keyboard.press("Enter")
             await page.waitForSelector("#app_totp", timeout=30000)
 
-            await page.type("#app_totp", TOKEN)
+            await page.type("#app_totp", opts.gh_token)
             await page.keyboard.press("Enter")
-            await page.waitForSelector(f"[data-login='{USER}']")
+            await page.waitForSelector(f"[data-login='{opts.gh_user}']")
 
             cookies = await page.cookies()
             COOKIE_JAR.parent.mkdir(parents=True, exist_ok=True)
@@ -135,7 +144,7 @@ async def browse_to_action(job_name: str, q: aio.Queue) -> RuntimeError | None:
             return action_url
 
         await page.goto(action_url)
-        link_handle = await page.waitForSelector(f"#workflow-job-name-{job_name}")
+        link_handle = await page.waitForSelector(f"#workflow-job-name-{opts.job_name}")
         href = await page.evaluate("(element) => element.href", link_handle)
         await page.goto(href)
         await aio.sleep(1)
@@ -270,20 +279,12 @@ def is_completed(x: str) -> bool:
     return False
 
 
-async def main() -> None:
-    # FIXME - better env and arg error handling
-    if len(sys.argv) < 3:
-        sys.exit(0)
-
-    (commit_sha, job_name) = sys.argv[1:3]
-    if commit_sha == len(commit_sha) * "0":
-        return
-
+async def main(opts: Opts) -> None:
     loop = aio.get_running_loop()
     loop.add_signal_handler(signal.SIGINT, lambda *_: sys.exit(0), tuple())
     loop.add_signal_handler(signal.SIGTERM, lambda *_: sys.exit(0), tuple())
 
-    _log(f"processing commit SHA: '{commit_sha}'")
+    _log(f"processing commit SHA: '{opts.commit_sha}'")
 
     # 1. boot up mitmproxy in a separate thread
     _log("starting mitmproxy")
@@ -304,7 +305,9 @@ async def main() -> None:
     url_q: aio.Queue[str | Exception] = aio.Queue(maxsize=1)
     abort = False
     for ret in await aio.gather(
-        get_action_url(commit_sha, url_q), browse_to_action(job_name, url_q), return_exceptions=True
+        get_action_url(opts.commit_sha, url_q),
+        browse_to_action(opts, url_q),
+        return_exceptions=True,
     ):
         if isinstance(ret, Exception):
             _log(f"got exception: {ret}")
@@ -323,5 +326,17 @@ async def main() -> None:
         _log(f"could not extract websockets URL or subs from {PROXY_FILE}")
 
 
+def typer_main(
+    commit_sha: str,
+    job_name: str,
+    gh_user: Annotated[str, typer.Option(envvar="_GH_USER")],
+    gh_pass: Annotated[str, typer.Option(envvar="_GH_PASS")],
+    gh_token: Annotated[str, typer.Option(envvar="_GH_TOKEN")],
+    headless: Annotated[bool, typer.Option(envvar="_HEADLESS")] = True,
+) -> None:
+    opts = Opts(commit_sha, job_name, gh_user, gh_pass, gh_token, headless)
+    aio.run(main(opts))
+
+
 if __name__ == "__main__":
-    aio.run(main())
+    typer.run(typer_main)

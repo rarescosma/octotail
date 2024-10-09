@@ -16,8 +16,10 @@ while read old_oid new_oid ref_name; do
 
   if [[ "$ref_name" == "refs/heads/main" ]]; then
     unset GIT_DIR
-    _GH_PASS="$(eval $_GH_PASS_CMD)"   \
-    _GH_TOKEN="$(eval $_GH_TOKEN_CMD)" \
-    PYTHONUNBUFFERED=1 "${_ACTION_CAT}/main.py" $new_oid "$_JOB_NAME"
+    export PYTHONUNBUFFERED=1
+    "${_ACTION_CAT}/main.py" $new_oid "$_JOB_NAME" \
+      --gh-user "$_GH_USER"                        \
+      --gh-pass "$(eval $_GH_PASS_CMD)"            \
+      --gh-token "$(eval $_GH_TOKEN_CMD)"
   fi
 done
