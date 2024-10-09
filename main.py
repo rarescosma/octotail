@@ -329,9 +329,15 @@ async def main(opts: Opts) -> None:
         _log(f"could not extract websockets URL or subs from {PROXY_FILE}")
 
 
+def _sha_callback(value: str) -> str:
+    if len(value) != 40:
+        raise typer.BadParameter("need a full 40 character long commit sha")
+    return value
+
+
 # pylint: disable=R0913,R0917
 def typer_main(
-    commit_sha: str,
+    commit_sha: Annotated[str, typer.Argument(callback=_sha_callback)],
     job_name: str,
     gh_user: Annotated[str, typer.Option(envvar="_GH_USER")],
     gh_pass: Annotated[str, typer.Option(envvar="_GH_PASS")],
