@@ -20,12 +20,12 @@ from mitmproxy.io import FlowReader
 from pyppeteer import launch
 from pyppeteer_stealth import stealth
 import websockets.client
-from xdg.BaseDirectory import xdg_cache_home
+from xdg.BaseDirectory import xdg_cache_home, xdg_data_home
 
 USER = os.getenv("_GH_USER")
 PASS = os.getenv("_GH_PASS")
 TOKEN = os.getenv("_GH_TOKEN")
-PROXY_FILE = "/tmp/proxy.tmp"
+PROXY_FILE = Path(xdg_data_home) / "action-cat" / "proxy.out"
 proxy_handle = None
 
 CHROME_ARGS = [
@@ -68,9 +68,9 @@ def is_close_to_expiry(ts: str) -> bool:
 
 
 def run_mitmproxy() -> None:
-    # Create a subprocess
+    PROXY_FILE.parent.mkdir(parents=True, exist_ok=True)
     proxy = subprocess.Popen(
-        ["mitmdump", "-w", PROXY_FILE],
+        ["mitmdump", "-w", str(PROXY_FILE)],
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
@@ -98,6 +98,7 @@ async def browse_to_action(job_name: str, q: aio.Queue) -> None:
             print("looking at cookie jar")
             cookies = json.loads(cookie_jar.read_text())
             if all(not is_close_to_expiry(c.get("expires", "-1")) for c in cookies):
+                print("all cookies are fresh, nom nom nom")
                 await aio.gather(*[page.setCookie(c) for c in cookies])
                 used_cookies = True
 
@@ -153,7 +154,7 @@ async def get_action_url(commit_sha: str, q: aio.Queue) -> None:
     await q.put(url)
 
 
-def url_and_sub(path: str) -> Tuple[str, str]:
+def url_and_sub(path: Path) -> Tuple[str, str]:
     with open(path, "rb") as f:
         reader = FlowReader(f)
         wss = [
@@ -213,6 +214,7 @@ async def main(commit_sha: str, job_name: str, *_: Any) -> None:
 
     loop = aio.get_running_loop()
     loop.add_signal_handler(signal.SIGINT, lambda *_: sys.exit(0), tuple())
+    loop.add_signal_handler(signal.SIGTERM, lambda *_: sys.exit(0), tuple())
 
     print(f"processing commit SHA: '{commit_sha}'")
 
