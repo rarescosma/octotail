@@ -31,7 +31,7 @@ PASS = os.getenv("_GH_PASS")
 TOKEN = os.getenv("_GH_TOKEN")
 PROXY_FILE = Path(xdg_data_home) / "action-cat" / "proxy.out"
 COOKIE_JAR = Path(xdg_cache_home) / "action-cat" / "gh-cookies.json"
-DEBUG = bool(os.getenv("DEBUG", False))
+DEBUG = bool(os.getenv("DEBUG"))
 
 CHROME_ARGS = [
     '--cryptauth-http-host ""',
@@ -135,6 +135,8 @@ async def browse_to_action(job_name: str, q: aio.Queue) -> RuntimeError | None:
     finally:
         await cleanup(page, browser)
 
+    return None
+
 
 async def nom_cookies(page: Page) -> bool:
     if not COOKIE_JAR.exists():
@@ -171,8 +173,9 @@ async def get_action_url(commit_sha: str, q: aio.Queue) -> None:
         out, err = await p.communicate()
         if p.returncode == 0:
             with suppress(Exception):
-                await q.put(json.loads(out.decode().strip())[0]["url"])
-                return
+                url = json.loads(out.decode().strip())[0]["url"]
+                _log(f"got action URL: {url}")
+                return await q.put(url)
             if DEBUG:
                 _log(f"gh out: {out.decode()}; gh err: {err.decode()}")
         else:
