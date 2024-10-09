@@ -1,4 +1,5 @@
 fake-useragent==1.5.1
 mitmproxy==11.0.0
 pyppeteer==2.0.0
-pyppeteer-stealth==2.7.4
+pyppeteer_stealth~=2.7.4
+websockets==10.4
