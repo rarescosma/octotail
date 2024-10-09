@@ -1,14 +1,23 @@
 #!/usr/bin/env -S zsh -li
 
+_ACTION_CAT="${HOME}/src/action-cat"
+_GH_USER="github-user-here"
+_GH_PASS_CMD="zenity --entry --hide-text --title='GitHub' --text='Enter password:'"
+_GH_TOKEN_CMD="zenity --entry --hide-text --title='GitHub' --text='Enter OTP token:'"
+_JOB_NAME="job-name-here"
+
+# add --no-force to prevent overwriting the actual remote refs
+git push origin --mirror
+
 while read old_oid new_oid ref_name; do
   echo "old_oid: $old_oid"
   echo "new_oid: $new_oid"
   echo "ref_name: $ref_name"
 
   if [[ "$ref_name" == "refs/heads/main" ]]; then
-    git push origin --mirror
-    export PYTHONUNBUFFERED=1
     unset GIT_DIR
-    _GH_USER="" _GH_TOKEN="" _GH_PASS="" ~/src/action-cat/main.py $new_oid job-name-here
+    _GH_PASS="$(eval $_GH_PASS_CMD)"   \
+    _GH_TOKEN="$(eval $_GH_TOKEN_CMD)" \
+    PYTHONUNBUFFERED=1 "${_ACTION_CAT}/main.py" $new_oid "$_JOB_NAME"
   fi
 done

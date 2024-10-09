@@ -55,7 +55,54 @@ NOTE: the `<commit_sha>` has to be of the full 40 characters length.
 
 ## As a post-receive hook
 
-A more clever way to use this curse is as a `post-receive` hook on a bare
-git repository that proxies to the real GitHub origin.
+A slightly more advanced use case that lets you stream the job outputs on
+`git push`, similar to how you get the test runs results when pushing
+to [Codecrafters][].
 
-See `post-receive.sample` for an example.
+For this to work we'll need control over the remote's output, so we can't use
+the GitHub remote directly. Instead, we'll use a bare repository a our "proxy"
+remote and set up its post-receive hook to call this cursed script.
+
+```
+export PROXY_REPO="${HOME}/src/proxy-repo"
+git init --bare $PROXY_REPO
+
+cd your-original-repo
+export ORIG_REMOTE="$(git remote get-url origin)"
+git remote add proxy $PROXY_REPO
+git push proxy --all
+cd -
+
+cp post-receive.sample $PROXY_REPO/hooks/post-receive
+cd $PROXY_REPO
+git remote add origin $ORIG_REMOTE
+cd -
+```
+
+Edit `$PROXY_REPO/hooks/post-receive` and change things according to 
+your setup:
+
+- set `_ACTION_CAT` to the path where you actually cloned this repo
+- set `_GH_USER` to your GitHub username
+- set `_GH_PASS_CMD` to a command that outputs the GitHub password, e.g. 
+  `_GH_PASS="pass github"`
+- _if using 2FA_ - set `_GH_TOKEN_CMD` to a command that outputs an OTP token 
+  for the GitHub 2FA, e.g. `_GH_PASS="totp github"`
+- set `_JOB_NAME` to the name of the job you want to tail
+- replace `"refs/heads/main"` with `refs/tags/*` (without the quotes) if
+  you expect the job to run on tags
+
+NOTE: the hook assumes you're using `zsh`, change the shebang to your own shell,
+just make sure to invoke it with the right flags to get an interactive, login
+shell. Useful to get access to custom functions and aliases.
+
+That's it! (phew) - no try pushing some commits to the `proxy` remote and check
+if you get the GitHub action logs streaming right back:
+
+```
+cd your-original-repo
+git commit --allow-empty -m 'test action-cat'
+git push proxy
+```
+
+[Codecrafters]: https://codecrafters.io/
