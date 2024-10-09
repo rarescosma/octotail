@@ -11,6 +11,7 @@ import sys
 import threading
 import time
 from contextlib import suppress
+from pathlib import Path
 from typing import Any, Iterable, Tuple, cast
 
 from fake_useragent import UserAgent
@@ -18,7 +19,8 @@ from mitmproxy.http import HTTPFlow
 from mitmproxy.io import FlowReader
 from pyppeteer import launch
 from pyppeteer_stealth import stealth
-from websockets.client import connect
+import websockets.client
+from xdg.BaseDirectory import xdg_cache_home
 
 USER = os.getenv("_GH_USER")
 PASS = os.getenv("_GH_PASS")
@@ -60,6 +62,11 @@ CHROME_ARGS = [
 ]
 
 
+def is_close_to_expiry(ts: str) -> bool:
+    ts, now = float(ts), time.time()
+    return ts > now and (ts - now) < 24 * 3600
+
+
 def run_mitmproxy() -> None:
     # Create a subprocess
     proxy = subprocess.Popen(
@@ -77,26 +84,40 @@ async def browse_to_action(job_name: str, q: aio.Queue) -> None:
     try:
         browser = await launch(
             # headless=False,
-            executablePath="/usr/bin/chromium",
             headless=True,
+            executablePath="/usr/bin/chromium",
             options={"args": CHROME_ARGS},
         )
 
         page = await browser.newPage()
         await stealth(page)
 
-        await page.goto("https://github.com/login")
-        await page.waitForSelector("#login_field", timeout=30000)
+        cookie_jar = Path(xdg_cache_home) / "action-cat" / "gh-cookies.json"
+        used_cookies = False
+        if cookie_jar.exists():
+            print("looking at cookie jar")
+            cookies = json.loads(cookie_jar.read_text())
+            if all(not is_close_to_expiry(c.get("expires", "-1")) for c in cookies):
+                await aio.gather(*[page.setCookie(c) for c in cookies])
+                used_cookies = True
 
-        await page.type("#login_field", USER)
-        await page.keyboard.press("Tab")
-        await page.type("#password", PASS)
-        await page.keyboard.press("Enter")
-        await page.waitForSelector("#app_totp", timeout=30000)
+        if not used_cookies:
+            await page.goto("https://github.com/login")
+            await page.waitForSelector("#login_field", timeout=30000)
 
-        await page.type("#app_totp", TOKEN)
-        await page.keyboard.press("Enter")
-        await page.waitForSelector(f"[data-login='{USER}']")
+            await page.type("#login_field", USER)
+            await page.keyboard.press("Tab")
+            await page.type("#password", PASS)
+            await page.keyboard.press("Enter")
+            await page.waitForSelector("#app_totp", timeout=30000)
+
+            await page.type("#app_totp", TOKEN)
+            await page.keyboard.press("Enter")
+            await page.waitForSelector(f"[data-login='{USER}']")
+
+            cookies = await page.cookies()
+            cookie_jar.parent.mkdir(parents=True, exist_ok=True)
+            cookie_jar.write_text(json.dumps(cookies))
 
         action_url = await q.get()
         await page.goto(action_url)
@@ -160,7 +181,7 @@ async def stream_it(url: str, sub: str) -> None:
 
     websocket = None
     try:
-        async with connect(ws_url, extra_headers=headers) as websocket:
+        async with websockets.client.connect(ws_url, extra_headers=headers) as websocket:
             await websocket.send(sub)
             async for msg in websocket:
                 if is_completed(msg):
@@ -182,6 +203,7 @@ def is_completed(x: str) -> bool:
     with suppress(Exception):
         dec = json.loads(x)
         return dec["data"]["status"] == "completed" and "conclusion" in dec["data"]
+    # noinspection PyUnreachableCode
     return False
 
 
