@@ -5,6 +5,7 @@ Basically a curse.
 import asyncio as aio
 import json
 import os
+import queue
 import signal
 import subprocess
 import sys
@@ -12,21 +13,22 @@ import threading
 import time
 from contextlib import suppress
 from pathlib import Path
-from typing import Any, Iterable, Tuple, cast
+from typing import Any, Iterable, Optional, Tuple, cast
 
+import websockets.client
 from fake_useragent import UserAgent
 from mitmproxy.http import HTTPFlow
 from mitmproxy.io import FlowReader
 from pyppeteer import launch
+from pyppeteer.page import Page
 from pyppeteer_stealth import stealth
-import websockets.client
 from xdg.BaseDirectory import xdg_cache_home, xdg_data_home
 
 USER = os.getenv("_GH_USER")
 PASS = os.getenv("_GH_PASS")
 TOKEN = os.getenv("_GH_TOKEN")
 PROXY_FILE = Path(xdg_data_home) / "action-cat" / "proxy.out"
-proxy_handle = None
+COOKIE_JAR = Path(xdg_cache_home) / "action-cat" / "gh-cookies.json"
 
 CHROME_ARGS = [
     '--cryptauth-http-host ""',
@@ -62,21 +64,18 @@ CHROME_ARGS = [
 ]
 
 
-def is_close_to_expiry(ts: str) -> bool:
-    ts, now = float(ts), time.time()
-    return ts > now and (ts - now) < 24 * 3600
-
-
-def run_mitmproxy() -> None:
+def run_mitmproxy(q: queue.Queue) -> None:
     PROXY_FILE.parent.mkdir(parents=True, exist_ok=True)
-    proxy = subprocess.Popen(
-        ["mitmdump", "-w", str(PROXY_FILE)],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
-    global proxy_handle
-    proxy_handle = proxy
-    proxy.wait()
+    try:
+        proxy = subprocess.Popen(
+            ["mitmdump", "-w", str(PROXY_FILE)],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        q.put(proxy)
+        proxy.wait()
+    except Exception as e:
+        q.put(e)
 
 
 async def browse_to_action(job_name: str, q: aio.Queue) -> None:
@@ -92,17 +91,7 @@ async def browse_to_action(job_name: str, q: aio.Queue) -> None:
         page = await browser.newPage()
         await stealth(page)
 
-        cookie_jar = Path(xdg_cache_home) / "action-cat" / "gh-cookies.json"
-        used_cookies = False
-        if cookie_jar.exists():
-            print("looking at cookie jar")
-            cookies = json.loads(cookie_jar.read_text())
-            if all(not is_close_to_expiry(c.get("expires", "-1")) for c in cookies):
-                print("all cookies are fresh, nom nom nom")
-                await aio.gather(*[page.setCookie(c) for c in cookies])
-                used_cookies = True
-
-        if not used_cookies:
+        if not await nom_cookies(page):
             await page.goto("https://github.com/login")
             await page.waitForSelector("#login_field", timeout=30000)
 
@@ -117,8 +106,8 @@ async def browse_to_action(job_name: str, q: aio.Queue) -> None:
             await page.waitForSelector(f"[data-login='{USER}']")
 
             cookies = await page.cookies()
-            cookie_jar.parent.mkdir(parents=True, exist_ok=True)
-            cookie_jar.write_text(json.dumps(cookies))
+            COOKIE_JAR.parent.mkdir(parents=True, exist_ok=True)
+            COOKIE_JAR.write_text(json.dumps(cookies))
 
         action_url = await q.get()
         await page.goto(action_url)
@@ -131,6 +120,27 @@ async def browse_to_action(job_name: str, q: aio.Queue) -> None:
             await page.close()
         if browser:
             await browser.close()
+
+
+async def nom_cookies(page: Page) -> bool:
+    if not COOKIE_JAR.exists():
+        return False
+
+    print("looking at cookie jar")
+    cookies = json.loads(COOKIE_JAR.read_text())
+
+    if any(is_close_to_expiry(c.get("expires", "-1")) for c in cookies):
+        print("found a stale cookie :-(")
+        return False
+
+    print("all cookies are fresh, nom nom nom")
+    await aio.gather(*[page.setCookie(c) for c in cookies])
+    return True
+
+
+def is_close_to_expiry(ts: str) -> bool:
+    _ts, now = float(ts), time.time()
+    return _ts > now and (_ts - now) < 24 * 3600
 
 
 async def get_action_url(commit_sha: str, q: aio.Queue) -> None:
@@ -154,7 +164,10 @@ async def get_action_url(commit_sha: str, q: aio.Queue) -> None:
     await q.put(url)
 
 
-def url_and_sub(path: Path) -> Tuple[str, str]:
+def url_and_sub(path: Path) -> Optional[Tuple[str, str]]:
+    if not path.exists() or not path.is_file():
+        return None
+
     with open(path, "rb") as f:
         reader = FlowReader(f)
         wss = [
@@ -162,8 +175,12 @@ def url_and_sub(path: Path) -> Tuple[str, str]:
             for flow in cast(Iterable[HTTPFlow], reader.stream())
             if flow.websocket is not None and flow.request.host.startswith("alive.github.com")
         ]
+        if not wss:
+            return None
         flow = wss[-1]
         msgs = [m.text for m in flow.websocket.messages if "subscribe" in json.loads(m.text)]
+        if not msgs:
+            return None
         return flow.request.url, msgs[0]
 
 
@@ -218,16 +235,30 @@ async def main(commit_sha: str, job_name: str, *_: Any) -> None:
 
     print(f"processing commit SHA: '{commit_sha}'")
 
-    # 1. boot up mitmproxy in a separate thread
-    proxy_thread = threading.Thread(target=run_mitmproxy)
-    print("started mitmproxy")
-    proxy_thread.start()
+    proxy_q: queue.Queue[subprocess.Popen | Exception] = queue.Queue(maxsize=1)
 
-    q: aio.Queue[str] = aio.Queue(maxsize=1)
+    # 1. boot up mitmproxy in a separate thread
+    print("starting mitmproxy")
+    proxy_thread = threading.Thread(target=run_mitmproxy, args=(proxy_q,))
+    proxy_thread.start()
+    proxy_handle = proxy_q.get()
+    if isinstance(proxy_handle, Exception):
+        print(f"got exception: {proxy_handle}")
+        sys.exit(1)
+
+    url_q: aio.Queue[str] = aio.Queue(maxsize=1)
 
     # 2. use gh CLI to get the action URL
     # 3. log into github via headless browser
-    await aio.gather(get_action_url(commit_sha, q), browse_to_action(job_name, q))
+    abort = False
+    for ret in await aio.gather(
+        get_action_url(commit_sha, url_q), browse_to_action(job_name, url_q), return_exceptions=True
+    ):
+        if isinstance(ret, Exception):
+            print(f"got exception: {ret}")
+            abort = True
+    if abort:
+        sys.exit(1)
 
     # 4. murder the proxy
     if proxy_handle is not None:
@@ -236,9 +267,12 @@ async def main(commit_sha: str, job_name: str, *_: Any) -> None:
     proxy_thread.join()
 
     # 5. start streaming
-    ws_url, ws_sub = url_and_sub(PROXY_FILE)
-    print(f"got websocket URL: '{ws_url}'")
-    await stream_it(ws_url, ws_sub)
+    if (url_sub := url_and_sub(PROXY_FILE)) is not None:
+        ws_url, ws_sub = url_sub
+        print(f"got websocket URL: '{ws_url}'")
+        await stream_it(ws_url, ws_sub)
+    else:
+        print(f"could not extract websockets URL or subs from {PROXY_FILE}")
 
 
 if __name__ == "__main__":
