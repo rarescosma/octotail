@@ -1,6 +1,8 @@
 # action-cat
 
-A __cursed__ way to have your cake and eat it too.
+A __cursed__ way to have your cake and eat it too: live tail GitHub action runs on `git push`.
+
+<img src="https://github.com/user-attachments/assets/dc4a218f-cae1-4fc5-9f0b-c32a3ecb7e93" width="1700px">
 
 ## Prerequisites
 
