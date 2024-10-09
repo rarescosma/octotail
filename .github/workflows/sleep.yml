@@ -1,0 +1,17 @@
+name: sleep
+
+on:
+  push:
+    branches:
+      - sleep
+
+jobs:
+  pycheck:
+    name: sleep
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Not awake
+        shell: bash
+        run: |
+          while true; do date "+%F@%T"; sleep 5; done
