@@ -1,0 +1,14 @@
+#!/usr/bin/env -S zsh -li
+
+while read old_oid new_oid ref_name; do
+  echo "old_oid: $old_oid"
+  echo "new_oid: $new_oid"
+  echo "ref_name: $ref_name"
+
+  if [[ "$ref_name" == "refs/heads/main" ]]; then
+    git push origin --mirror
+    export PYTHONUNBUFFERED=1
+    unset GIT_DIR
+    _GH_USER="" _GH_TOKEN="" _GH_PASS="" ~/src/action-cat/main.py $new_oid job-name-here
+  fi
+done
