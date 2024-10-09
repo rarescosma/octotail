@@ -18,8 +18,8 @@ while read old_oid new_oid ref_name; do
     unset GIT_DIR
     export PYTHONUNBUFFERED=1
     "${_OCTOTAIL}/main.py" $new_oid "$_JOB_NAME" \
-      --gh-user "$_GH_USER"                        \
-      --gh-pass "$(eval $_GH_PASS_CMD)"            \
+      --gh-user "$_GH_USER"                      \
+      --gh-pass "$(eval $_GH_PASS_CMD)"          \
       --gh-token "$(eval $_GH_TOKEN_CMD)"
   fi
 done
