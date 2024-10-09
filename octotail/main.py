@@ -9,19 +9,18 @@ import sys
 from contextlib import suppress
 from functools import partial
 from pathlib import Path
-from typing import Optional
 
 import typer
-import websockets.client
 from pyppeteer.browser import Browser
 from pyppeteer.page import Page
 from pyppeteer_stealth import stealth
 from xdg.BaseDirectory import xdg_cache_home, xdg_data_home
 
-from .browser import WS_HEADERS, launch_browser, login_flow, nom_cookies
+from .browser import launch_browser, login_flow, nom_cookies
 from .cli import Opts, cli
 from .mitm import get_websocket, start_proxy
 from .utils import Ok, Result, Retry, log, retries, run_cmd
+from .ws import stream_it
 
 COOKIE_JAR = Path(xdg_cache_home) / "octotail" / "gh-cookies.json"
 PROXY_FILE = Path(xdg_data_home) / "octotail" / "proxy.out"
@@ -97,39 +96,6 @@ async def get_run_url(opts: Opts) -> Result[str]:
     if DEBUG:
         log(f"gh out: {out.decode()}; gh err: {err.decode()}")
     return Retry()
-
-
-async def stream_it(url: str, sub: str) -> None:
-    ws_url = "wss://" + url.removeprefix("https://")
-
-    websocket = None
-    try:
-        async with websockets.client.connect(ws_url, extra_headers=WS_HEADERS) as websocket:
-            await websocket.send(sub)
-            async for msg in websocket:
-                if (conclusion := is_completed(msg)) is not None:
-                    print(conclusion)
-                    return
-                print(extract_line(msg))
-    except aio.CancelledError:
-        log("cancelled")
-        if websocket:
-            await websocket.close()
-
-
-def extract_line(x: str) -> str:
-    with suppress(Exception):
-        return "\n".join(l["line"] for l in json.loads(x)["data"]["data"]["lines"])
-    return ""
-
-
-def is_completed(x: str) -> Optional[str]:
-    with suppress(Exception):
-        data = json.loads(x)["data"]
-        if data["status"] == "completed" and "conclusion" in data:
-            return f'job completed; conclusion: {data["conclusion"]}'
-    # noinspection PyUnreachableCode
-    return None
 
 
 @cli

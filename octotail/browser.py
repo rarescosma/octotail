@@ -46,16 +46,6 @@ CHROME_ARGS = [
     "--proxy-server=127.0.0.1:8080",
 ]
 
-WS_HEADERS = {
-    "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:131.0) Gecko/20100101 Firefox/131.0",
-    "Origin": "https://github.com",
-    "Sec-Fetch-Dest": "empty",
-    "Sec-Fetch-Mode": "websocket",
-    "Sec-Fetch-Site": "same-site",
-    "Pragma": "no-cache",
-    "Cache-Control": "no-cache",
-}
-
 
 async def launch_browser(headless: bool) -> Browser:
     return await launch(
@@ -89,7 +79,7 @@ async def nom_cookies(page: Page, cookie_jar: Path) -> bool:
 
     cookies = json.loads(cookie_jar.read_text())
 
-    if any(is_close_to_expiry(c.get("expires", "-1")) for c in cookies):
+    if any(_is_close_to_expiry(c.get("expires", "-1")) for c in cookies):
         log("found a stale cookie :-(")
         return False
 
@@ -98,6 +88,6 @@ async def nom_cookies(page: Page, cookie_jar: Path) -> bool:
     return True
 
 
-def is_close_to_expiry(ts: str) -> bool:
+def _is_close_to_expiry(ts: str) -> bool:
     _ts, now = float(ts), time.time()
     return _ts > now and (_ts - now) < 24 * 3600
