@@ -46,18 +46,30 @@ sudo trust anchor ~/.mitmproxy/mitmproxy-ca-cert.cer
 
 ## Usage
 
-```shell
-./main.py <commit_sha> <job_name>
+```
+# ./main.py --help
+Usage: main.py [OPTIONS] COMMIT_SHA WORKFLOW
+
+Arguments:
+  COMMIT_SHA  [required]
+  WORKFLOW    [required]
+
+Options:
+  --gh-user TEXT              [env var: _GH_USER; required]
+  --gh-pass TEXT              [env var: _GH_PASS; required]
+  --gh-token TEXT             [env var: _GH_TOKEN; required]
+  --headless / --no-headless  [env var: _HEADLESS; default: headless]
+  --help                      Show this message and exit.
 ```
 
-Will look for an active action/job for the given `<commit_sha>` and `<job_name>`
+Will look for an active run for the given `<commit_sha>` and `<workflow>`
 and attempt via skull-crushing voodoo magic to tail its logs.
 
 _NOTE:_ the `<commit_sha>` has to be of the full 40 characters length.
 
 ## As a post-receive hook
 
-A slightly more advanced use case that lets you stream the job outputs on
+A slightly more advanced use case that lets you stream the run outputs on
 `git push`, similar to how you get the test runs results when pushing
 to [Codecrafters][].
 
@@ -90,9 +102,9 @@ your setup:
   `_GH_PASS="pass github"`
 - _if using 2FA_ - set `_GH_TOKEN_CMD` to a command that outputs an OTP token 
   for the GitHub 2FA, e.g. `_GH_PASS="totp github"`
-- set `_JOB_NAME` to the name of the job you want to tail
+- set `_WORKFLOW` to the name of the workflow whose runs you want to tail
 - replace `"refs/heads/main"` with `refs/tags/*` (without the quotes) if
-  you expect the job to run on tags
+  you expect the workflow to run on tags
 
 NOTE: the hook assumes you're using `zsh`, change the shebang to your own shell,
 just make sure to invoke it with the right flags to get an interactive, login

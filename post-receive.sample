@@ -4,7 +4,7 @@ _OCTOTAIL="${HOME}/src/octotail"
 _GH_USER="github-user-here"
 _GH_PASS_CMD="zenity --entry --hide-text --title='GitHub' --text='Enter password:'"
 _GH_TOKEN_CMD="zenity --entry --hide-text --title='GitHub' --text='Enter OTP token:'"
-_JOB_NAME="job-name-here"
+_WORKFLOW="workflow-name-here"
 
 # add --no-force to prevent overwriting the actual remote refs
 git push origin --mirror
@@ -17,7 +17,7 @@ while read old_oid new_oid ref_name; do
   if [[ "$ref_name" == "refs/heads/main" ]]; then
     unset GIT_DIR
     export PYTHONUNBUFFERED=1
-    "${_OCTOTAIL}/main.py" $new_oid "$_JOB_NAME" \
+    "${_OCTOTAIL}/main.py" $new_oid "$_WORKFLOW" \
       --gh-user "$_GH_USER"                      \
       --gh-pass "$(eval $_GH_PASS_CMD)"          \
       --gh-token "$(eval $_GH_TOKEN_CMD)"

@@ -1,6 +1,6 @@
 #!/usr/bin/env -S /bin/sh -c 'exec "$(dirname $(readlink -f "$0"))/.venv/bin/python3" "$0" "$@"'
 """
-Basically a curse.
+Have the cake and tail it too.
 """
 import asyncio as aio
 import inspect
@@ -36,7 +36,7 @@ class Opts(NamedTuple):
     """Holds common options."""
 
     commit_sha: str
-    job_name: str
+    workflow: str
     gh_user: str
     gh_pass: str
     gh_token: str
@@ -139,16 +139,21 @@ async def browse_to_action(opts: Opts, q: aio.Queue) -> RuntimeError | None:
             COOKIE_JAR.parent.mkdir(parents=True, exist_ok=True)
             COOKIE_JAR.write_text(json.dumps(cookies))
 
-        action_url = await q.get()
-        if isinstance(action_url, RuntimeError):
-            return action_url
+        run_url = await q.get()
+        if isinstance(run_url, RuntimeError):
+            return run_url
 
-        await page.goto(action_url)
-        link_handle = await page.waitForSelector(f"#workflow-job-name-{opts.job_name}")
-        href = await page.evaluate("(element) => element.href", link_handle)
+        await page.goto(run_url)
+        spinner = await page.waitForSelector(f".WorkflowJob-title .anim-rotate")
+        href = await page.evaluate(
+            """
+            (element) => { let p = element; while (!p.hasAttribute('href')) { p = p.parentNode; }; return p.href; }
+            """,
+            spinner,
+        )
         await page.goto(href)
-        # should come up with a better way to wait for the proper sockets...
-        await aio.sleep(3)
+        await page.waitForSelector(".js-socket-channel[data-job-status='in_progress']")
+        await aio.sleep(1)
     finally:
         await cleanup(page, browser)
 
@@ -175,47 +180,46 @@ def is_close_to_expiry(ts: str) -> bool:
     return _ts > now and (_ts - now) < 24 * 3600
 
 
-async def get_action_url(commit_sha: str, q: aio.Queue) -> None:
-    # farm out to gh CLI the listing of a job that matches the SHA
-    cmd = f"gh run list -c {commit_sha} --json url,status,databaseId"
+async def _run_cmd(cmd: str) -> Tuple[bytes, bytes, int]:
+    handle = await aio.create_subprocess_shell(
+        cmd,
+        stdout=aio.subprocess.PIPE,
+        stderr=aio.subprocess.PIPE,
+    )
+    out, err = await handle.communicate()
+    return out, err, handle.returncode
+
+
+async def get_run_url(opts: Opts, q: aio.Queue) -> None:
+    valid_statuses = ["queued", "in_progress", "requested", "waiting", "action_required"]
+    # farm out to gh CLI the listing of a run that matches the SHA
+    list_cmd = f"gh run list -c {opts.commit_sha} -w {opts.workflow} --json url,status,databaseId"
 
     # "just put a retry loop around it"
-    for _ in range(0, 10):
-        gh = await aio.create_subprocess_shell(
-            cmd,
-            stdout=aio.subprocess.PIPE,
-            stderr=aio.subprocess.PIPE,
-        )
-        out, err = await gh.communicate()
-        if gh.returncode != 0:
+    for _ in range(0, 20):
+        out, err, ret_code = await _run_cmd(list_cmd)
+        if ret_code != 0:
             _log(f"gh error: {err.decode().strip()}")
             await aio.sleep(1)
             continue
 
         with suppress(Exception):
-            decoded = json.loads(out.decode().strip())[0]
-            if not decoded.get("status") in [
-                "queued",
-                "in_progress",
-                "requested",
-                "waiting",
-                "action_required",
-            ]:
-                _log(f"cannot process action in state: '{decoded.get("status")}'")
-                _log(f"try:\n\n\tgh run view {decoded.get("databaseId")} --log\n")
-                _log(f"or try browsing to:\n\n\t{decoded.get("url")}\n")
+            gh_run = json.loads(out.decode().strip())[0]
+
+            if not gh_run.get("status") in valid_statuses:
+                _log(f"cannot process run in state: '{gh_run.get("status")}'")
+                _log(f"try:\n\n\tgh run view {gh_run.get("databaseId")} --log\n")
+                _log(f"or try browsing to:\n\n\t{gh_run.get("url")}\n")
                 return await q.put(RuntimeError("invalid action state"))
 
-            url = decoded["url"]
-            _log(f"success: {url}")
-            return await q.put(url)
+            _log(f"got run url: {gh_run["url"]}")
+            return await q.put(gh_run["url"])
         if DEBUG:
             _log(f"gh out: {out.decode()}; gh err: {err.decode()}")
-
-        await aio.sleep(1)
+        await aio.sleep(0.5)
 
     _log("giving up")
-    await q.put(RuntimeError("exceeded gh retries"))
+    await q.put(RuntimeError("exceeded 'gh run list' retries"))
 
 
 def get_websocket(path: Path) -> Optional[Tuple[str, str]]:
@@ -308,9 +312,9 @@ async def main(opts: Opts) -> None:
     url_q: aio.Queue[str | Exception] = aio.Queue(maxsize=1)
     abort = False
     for ret in await aio.gather(
-        get_action_url(opts.commit_sha, url_q),
+        get_run_url(opts, url_q),
         browse_to_action(opts, url_q),
-        return_exceptions=True,
+        return_exceptions=False,
     ):
         if isinstance(ret, Exception):
             _log(f"got exception: {ret}")
@@ -338,13 +342,13 @@ def _sha_callback(value: str) -> str:
 # pylint: disable=R0913,R0917
 def typer_main(
     commit_sha: Annotated[str, typer.Argument(callback=_sha_callback)],
-    job_name: str,
+    workflow: str,
     gh_user: Annotated[str, typer.Option(envvar="_GH_USER")],
     gh_pass: Annotated[str, typer.Option(envvar="_GH_PASS")],
     gh_token: Annotated[str, typer.Option(envvar="_GH_TOKEN")],
     headless: Annotated[bool, typer.Option(envvar="_HEADLESS")] = True,
 ) -> None:
-    opts = Opts(commit_sha, job_name, gh_user, gh_pass, gh_token, headless)
+    opts = Opts(commit_sha, workflow, gh_user, gh_pass, gh_token, headless)
     aio.run(main(opts))
 
 
