@@ -32,6 +32,7 @@ TOKEN = os.getenv("_GH_TOKEN")
 PROXY_FILE = Path(xdg_data_home) / "action-cat" / "proxy.out"
 COOKIE_JAR = Path(xdg_cache_home) / "action-cat" / "gh-cookies.json"
 DEBUG = bool(os.getenv("DEBUG"))
+HEADLESS = bool(os.getenv("_HEADLESS", "1"))
 
 CHROME_ARGS = [
     '--cryptauth-http-host ""',
@@ -97,8 +98,7 @@ async def browse_to_action(job_name: str, q: aio.Queue) -> RuntimeError | None:
 
     try:
         browser = await launch(
-            # headless=False,
-            headless=True,
+            headless=HEADLESS,
             executablePath="/usr/bin/chromium",
             options={"args": CHROME_ARGS},
         )
