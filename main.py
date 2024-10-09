@@ -125,14 +125,15 @@ async def browse_to_action(job_name: str, q: aio.Queue) -> RuntimeError | None:
             COOKIE_JAR.parent.mkdir(parents=True, exist_ok=True)
             COOKIE_JAR.write_text(json.dumps(cookies))
 
-        if (action_url := await q.get()) is not None:
-            await page.goto(action_url)
-            link_handle = await page.waitForSelector(f"#workflow-job-name-{job_name}")
-            href = await page.evaluate("(element) => element.href", link_handle)
-            await page.goto(href)
-            await aio.sleep(1)
-        else:
-            return RuntimeError("aborting due to no action URL")
+        action_url = await q.get()
+        if isinstance(action_url, RuntimeError):
+            return action_url
+
+        await page.goto(action_url)
+        link_handle = await page.waitForSelector(f"#workflow-job-name-{job_name}")
+        href = await page.evaluate("(element) => element.href", link_handle)
+        await page.goto(href)
+        await aio.sleep(1)
     finally:
         await cleanup(page, browser)
 
@@ -161,7 +162,7 @@ def is_close_to_expiry(ts: str) -> bool:
 
 async def get_action_url(commit_sha: str, q: aio.Queue) -> None:
     # farm out to gh CLI the listing of a job that matches the SHA
-    cmd = f"gh run list -c {commit_sha} --json url,status"
+    cmd = f"gh run list -c {commit_sha} --json url,status,databaseId"
 
     # "just put a retry loop around it"
     for _ in range(0, 10):
@@ -173,17 +174,30 @@ async def get_action_url(commit_sha: str, q: aio.Queue) -> None:
         out, err = await p.communicate()
         if p.returncode == 0:
             with suppress(Exception):
-                url = json.loads(out.decode().strip())[0]["url"]
+                decoded = json.loads(out.decode().strip())[0]
+                if not decoded.get("status") in [
+                    "queued",
+                    "in_progress",
+                    "requested",
+                    "waiting",
+                    "action_required",
+                ]:
+                    _log(f"cannot process action in state: '{decoded.get("status")}'")
+                    _log(f"try:\n\n\tgh run view {decoded.get("databaseId")} --log\n")
+                    _log(f"or try browsing to:\n\n\t{decoded.get("url")}\n")
+                    return await q.put(RuntimeError("invalid action state"))
+
+                url = decoded["url"]
                 _log(f"success: {url}")
                 return await q.put(url)
             if DEBUG:
                 _log(f"gh out: {out.decode()}; gh err: {err.decode()}")
         else:
-            _log(f"gh error: {err.decode()}")
+            _log(f"gh error: {err.decode().strip()}")
         await aio.sleep(1)
 
-    _log("giving up get_action_url / gh")
-    await q.put(None)
+    _log("giving up")
+    await q.put(RuntimeError("exceeded gh retries"))
 
 
 def get_websocket(path: Path) -> Optional[Tuple[str, str]]:
@@ -269,7 +283,7 @@ async def main(commit_sha: str, job_name: str, *_: Any) -> None:
         _log(f"got exception: {proxy_handle}")
         sys.exit(1)
 
-    url_q: aio.Queue[str | None] = aio.Queue(maxsize=1)
+    url_q: aio.Queue[str | Exception] = aio.Queue(maxsize=1)
 
     # 2. use gh CLI to get the action URL
     # 3. log into github via headless browser
