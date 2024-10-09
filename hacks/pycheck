@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+
+locat() { 
+  flock -e /tmp/pycheck.lock cat 
+}
+export -f locat
+
+DEFAULT_CFG="${XDG_CONFIG_HOME}/pycheck/default-setup.cfg"
+
+PYLINT_ARGS="--rcfile=${DEFAULT_CFG}"
+test -f setup.cfg && PYLINT_ARGS="--rcfile=setup.cfg"
+test -f pylintrc && PYLINT_ARGS="--rcfile=pylintrc"
+
+MYPY_ARGS="--config-file=${DEFAULT_CFG}"
+test -f setup.cfg && MYPY_ARGS="--config-file=setup.cfg"
+test -f pylintrc && MYPY_ARGS="--config-file=pylintrc"
+
+# clean & sort imports
+echo
+echo ">>>>>> pycln <<<<<<"
+pycln "${@}"
+echo "-------------------"
+echo
+echo ">>>>>> isort <<<<<<"
+isort -l100 -m3 --tc "${@}"
+echo "-------------------"
+
+# format
+echo
+echo ">>>>>> black <<<<<<"
+black -l 100 "${@}"
+echo "-------------------"
+
+# dead code is bad
+echo
+echo ">>>>> vulture <<<<<"
+vulture "${@}"
+echo "-------------------"
+
+# types are good
+({
+    echo
+    echo ">>>>>> mypy <<<<<<<"
+    mypy "${MYPY_ARGS}" --ignore-missing-imports --disallow-untyped-defs "${@}" 
+    echo "-------------------"
+} | locat) &
+
+# messy code is bad
+({
+    echo
+    echo ">>>>>> pylint <<<<<"
+    pylint "${PYLINT_ARGS}" "${@}"
+    echo "-------------------"
+} | locat) &
+
+wait
