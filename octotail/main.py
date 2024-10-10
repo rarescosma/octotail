@@ -53,7 +53,9 @@ async def browse_to_action(q: aio.Queue, opts: Opts) -> RuntimeError | None:
             return run_url
 
         await page.goto(run_url)
-        spinner = await page.waitForSelector(".WorkflowJob-title .anim-rotate")
+        spinner = await page.waitForSelector(
+            ".WorkflowJob-title .anim-rotate, .WorkflowJob-title .hx_dot-fill-pending-icon"
+        )
         href = await page.evaluate(
             """ (element) => { 
                 let p = element; 
@@ -62,8 +64,10 @@ async def browse_to_action(q: aio.Queue, opts: Opts) -> RuntimeError | None:
             spinner,
         )
         await page.goto(href)
-        await page.waitForSelector(".js-socket-channel[data-job-status='in_progress']")
-        await aio.sleep(1)
+        # FIXME - gotta get that mitmproxy to stream to some in-memory location
+        # so we can catch the websockets early
+        # await page.waitForSelector(".js-socket-channel[data-job-status='in_progress']")
+        await aio.sleep(2)
     finally:
         await cleanup(page, browser)
 
