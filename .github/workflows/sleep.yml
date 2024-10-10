@@ -8,7 +8,7 @@ on:
 jobs:
   sleeper_one:
     name: sleeper_one
-    runs-on: ubuntu-latest
+    runs-on: arc-v0
     steps:
       - uses: actions/checkout@v4
       - name: Not awake
@@ -23,7 +23,7 @@ jobs:
   sleeper_two:
     name: sleeper_two
     needs: ["sleeper_one"]
-    runs-on: ubuntu-latest
+    runs-on: arc-v0
     steps:
       - uses: actions/checkout@v4
       - name: Not awake
