@@ -10,6 +10,17 @@ import websockets.client
 from .utils import log
 
 
+WS_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:131.0) Gecko/20100101 Firefox/131.0",
+    "Origin": "https://github.com",
+    "Sec-Fetch-Dest": "empty",
+    "Sec-Fetch-Mode": "websocket",
+    "Sec-Fetch-Site": "same-site",
+    "Pragma": "no-cache",
+    "Cache-Control": "no-cache",
+}
+
+
 async def stream_it(url: str, sub: str) -> None:
     ws_url = "wss://" + url.removeprefix("https://")
 
@@ -40,14 +51,3 @@ def _is_completed(x: str) -> Optional[str]:
         if data["status"] == "completed" and "conclusion" in data:
             return f'job completed; conclusion: {data["conclusion"]}'
     return None
-
-
-WS_HEADERS = {
-    "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:131.0) Gecko/20100101 Firefox/131.0",
-    "Origin": "https://github.com",
-    "Sec-Fetch-Dest": "empty",
-    "Sec-Fetch-Mode": "websocket",
-    "Sec-Fetch-Site": "same-site",
-    "Pragma": "no-cache",
-    "Cache-Control": "no-cache",
-}
