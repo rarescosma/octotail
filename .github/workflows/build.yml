@@ -8,7 +8,7 @@ on:
 jobs:
   pycheck:
     name: pycheck
-    runs-on: ubuntu-latest
+    runs-on: arc-v0
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
