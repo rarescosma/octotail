@@ -46,6 +46,7 @@ class Manager(ThreadingActor):
 
     def on_receive(self, msg: MgrMessage) -> None:
         debug(f"manager got message: {msg!r}")
+
         match msg:
             case WorkflowJob() as job:
                 self.browse_queue.put_nowait(VisitRequest(job.html_url))
@@ -58,13 +59,13 @@ class Manager(ThreadingActor):
                 self.background_tasks[ws_sub.job_id] = run_streamer(ws_sub, self.output_lock)
 
             case JobDone() as job_done:
-                print(f"[{job_done.job_name}] conclusion: {job_done.conclusion}")
+                print(f"[{job_done.job_name}]: conclusion: {job_done.conclusion}")
                 if (streamer := self.background_tasks.get(job_done.job_id)) is not None:
                     streamer.terminate()
                     del self.background_tasks[job_done.job_id]
 
             case WorkflowDone() as wf_done:
-                print(f"workflow conclusion: {wf_done.conclusion}")
+                print(f"[workflow]: conclusion: {wf_done.conclusion}")
                 self.browse_queue.put_nowait(ExitRequest())
                 self.stop.set()
 
@@ -82,24 +83,24 @@ def main(opts: Opts) -> None:
     if (repo_id := guess_repo()) is None:
         sys.exit(1)
 
-    g = Github(auth=Auth.Token(opts.gh_pat))
-    gh_repo = g.get_repo(repo_id)
-    gha_run = get_active_run(gh_repo, opts.commit_sha, opts.workflow)
-    if not isinstance(gha_run, WorkflowRun):
+    gh_client = Github(auth=Auth.Token(opts.gh_pat))
+    wf_run = get_active_run(gh_client.get_repo(repo_id), opts.commit_sha, opts.workflow)
+    if not isinstance(wf_run, WorkflowRun):
+        log(f"could not get a matching workflow run: {wf_run}")
         sys.exit(1)
 
     # pylint: disable=E1136
-    browse_queue: mp.Queue[BrowseRequest] = mp.Queue()
+    browser_inbox: mp.Queue[BrowseRequest] = mp.Queue()
 
-    mp.Process(target=run_browser, args=(opts, browse_queue)).start()
-    manager = Manager.start(browse_queue, _stop)
-    run_watcher = RunWatcher.start(gha_run, manager, _stop)
+    mp.Process(target=run_browser, args=(opts, browser_inbox)).start()
+    manager = Manager.start(browser_inbox, _stop)
+    run_watcher = RunWatcher.start(wf_run, manager, _stop)
     proxy_watcher = ProxyWatcher.start(manager, _stop)
 
-    h1 = run_watcher.proxy().watch()
-    h2 = proxy_watcher.proxy().watch()
+    run_watcher_future = run_watcher.proxy().watch()
+    proxy_watcher_future = proxy_watcher.proxy().watch()
     try:
-        h1.join(h2).get()
+        run_watcher_future.join(proxy_watcher_future).get()
     except KeyboardInterrupt:
         _stop.set()
 

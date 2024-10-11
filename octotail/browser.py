@@ -95,26 +95,25 @@ async def launch_browser(headless: bool) -> Browser:
     )
 
 
-async def _browser(opts: Opts, queue: mp.Queue) -> None:
-    browser = None
+async def _browser(opts: Opts, inbox: mp.Queue) -> None:
+    browser = await launch_browser(opts.headless)
     tasks = set()
     open_pages = {}
     in_progress = aio.Event()
-    mini_q: Deque[VisitRequest] = deque()
+    visit_queue: Deque[VisitRequest] = deque()
 
-    async def _navigate(_browser: Browser, _url: str) -> None:
-        _page = await _browser.newPage()
+    def _schedule_visit(_url: str) -> None:
+        in_progress.set()
+        _task = aio.create_task(_visit(_url))
+        tasks.add(_task)
+        _task.add_done_callback(tasks.discard)
+
+    async def _visit(_url: str) -> None:
+        _page = await browser.newPage()
         _job_id = int(_url.split("/")[-1])
         open_pages[_job_id] = _page
         await _page.goto(_url)
 
-    def _schedule(_url: str) -> None:
-        in_progress.set()
-        _task = aio.create_task(_navigate(browser, _url))
-        tasks.add(_task)
-        _task.add_done_callback(tasks.discard)
-
-    browser = await launch_browser(opts.headless)
     start_page = (await browser.pages())[0]
     await stealth(start_page)
 
@@ -126,23 +125,24 @@ async def _browser(opts: Opts, queue: mp.Queue) -> None:
 
     while True:
         with suppress(Empty):
-            if not in_progress.is_set() and mini_q:
-                _schedule(mini_q.pop().url)
+            if not in_progress.is_set() and visit_queue:
+                _schedule_visit(visit_queue.pop().url)
                 continue
 
-            browse_request = queue.get_nowait()
-            if isinstance(browse_request, ExitRequest):
-                return await browser.close()
-            if isinstance(browse_request, CloseRequest):
-                if browse_request.job_id in open_pages:
-                    await open_pages[browse_request.job_id].close()
-                in_progress.clear()
+            match inbox.get_nowait():
+                case ExitRequest():
+                    return await browser.close()
 
-            if isinstance(browse_request, VisitRequest):
-                if in_progress.is_set():
-                    mini_q.appendleft(browse_request)
-                else:
-                    _schedule(browse_request.url)
+                case CloseRequest() as close_req:
+                    if close_req.job_id in open_pages:
+                        await open_pages[close_req.job_id].close()
+                    in_progress.clear()
+
+                case VisitRequest() as visit_req:
+                    if in_progress.is_set():
+                        visit_queue.appendleft(visit_req)
+                    else:
+                        _schedule_visit(visit_req.url)
 
         await aio.sleep(0.5)
 

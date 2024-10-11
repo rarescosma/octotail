@@ -32,28 +32,28 @@ class JobDone(NamedTuple):
 class RunWatcher(ThreadingActor):
     """Watches for changes in a GitHub Actions run."""
 
-    wf: WorkflowRun
+    wf_run: WorkflowRun
     mgr: ActorRef
     stop: Event
 
     _new_jobs: Set[int] = set()
     _concluded_jobs: Set[int] = set()
 
-    def __init__(self, wf: WorkflowRun, mgr: ActorRef, stop: Event):
+    def __init__(self, wf_run: WorkflowRun, mgr: ActorRef, stop: Event):
         super().__init__()
-        self.wf = wf
+        self.wf_run = wf_run
         self.mgr = mgr
         self.stop = stop
 
     def watch(self) -> None:
         while not self.stop.is_set():
-            self.wf.update()
+            self.wf_run.update()
 
-            if self.wf.conclusion:
-                self.mgr.tell(WorkflowDone(self.wf.conclusion))
+            if self.wf_run.conclusion:
+                self.mgr.tell(WorkflowDone(self.wf_run.conclusion))
 
             with suppress(Exception):
-                for job in self.wf.jobs():
+                for job in self.wf_run.jobs():
                     if job.conclusion and not job.id in self._concluded_jobs:
                         self.mgr.tell(JobDone(job.id, job.name, job.conclusion))
                         self._concluded_jobs.add(job.id)

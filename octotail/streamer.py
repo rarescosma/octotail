@@ -8,9 +8,9 @@ from multiprocessing.synchronize import Lock as LockBase
 
 import websockets.client
 
+from octotail.browser import RANDOM_UA
 from octotail.mitm import WsSub
 from octotail.utils import log
-from octotail.browser import RANDOM_UA
 
 WS_HEADERS = {
     "User-Agent": RANDOM_UA,
