@@ -1,12 +1,13 @@
 #!/usr/bin/env -S /bin/sh -c 'exec "$(dirname $(readlink -f "$0"))/../.venv/bin/python3" "$0" "$@"'
 
 """Having your cake and eating it too."""
+import dataclasses
 import multiprocessing as mp
 import sys
 from multiprocessing.synchronize import Lock as LockBase
 from pathlib import Path
 from threading import Event
-from typing import Union, Dict
+from typing import Dict, Union, cast
 
 import typer
 from github import Auth, Github
@@ -15,15 +16,15 @@ from github.WorkflowRun import WorkflowRun
 from pykka import ActorRegistry, ThreadingActor
 from xdg.BaseDirectory import xdg_cache_home
 
-from octotail.browser import run_browser, VisitRequest, CloseRequest, ExitRequest
-from octotail.gh import RunWatcher, get_active_run, guess_repo, JobDone, WorkflowDone
+from octotail.browser import CloseRequest, ExitRequest, VisitRequest, run_browser
+from octotail.gh import JobDone, RunWatcher, WorkflowDone, get_active_run, guess_repo
 from octotail.mitm import ProxyWatcher, WsSub
 from octotail.streamer import run_streamer
-from octotail.utils import Opts, cli, log, debug
+from octotail.utils import Opts, cli, debug, log
 
 COOKIE_JAR = Path(xdg_cache_home) / "octotail" / "gh-cookies.json"
 
-type MgrMessage = Union[WorkflowJob, WsSub, JobDone]
+type MgrMessage = Union[WorkflowJob, WsSub, JobDone, WorkflowDone]
 
 
 class Manager(ThreadingActor):
@@ -58,7 +59,7 @@ class Manager(ThreadingActor):
 
             case WsSub():
                 if msg.job_id in self.job_map:
-                    msg = msg._replace(job_name=self.job_map[msg.job_id])
+                    msg = dataclasses.replace(cast(WsSub, msg), job_name=self.job_map[msg.job_id])
                 self.browse_queue.put_nowait(CloseRequest(msg.job_id))
                 self.background_tasks[msg.job_id] = run_streamer(msg, self.output_lock)
 

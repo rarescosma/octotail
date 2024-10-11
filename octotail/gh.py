@@ -4,7 +4,7 @@ import re
 from contextlib import suppress
 from subprocess import check_output
 from threading import Event
-from typing import Set, NamedTuple
+from typing import NamedTuple, Set
 
 from github import Repository
 from github.WorkflowRun import WorkflowRun
@@ -16,9 +16,14 @@ VALID_STATI = ["queued", "in_progress", "requested", "waiting", "action_required
 
 
 class WorkflowDone(NamedTuple):
+    """Workflow done message."""
+
     conclusion: str
 
+
 class JobDone(NamedTuple):
+    """Job done message."""
+
     job_id: int
     job_name: str
     conclusion: str

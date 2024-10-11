@@ -30,7 +30,7 @@ def log(msg: str, stack_offset: int = 1) -> None:
     print(f"[{fn}]: {msg}")
 
 
-def debug(msg: str):
+def debug(msg: str) -> None:
     if DEBUG:
         log(msg, 2)
 

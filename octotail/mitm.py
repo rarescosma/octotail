@@ -8,9 +8,10 @@ import socket
 import sys
 from argparse import Namespace
 from contextlib import suppress
+from dataclasses import dataclass
 from queue import Empty
 from threading import Event
-from typing import List, NamedTuple
+from typing import List
 
 from mitmproxy.tools.main import mitmdump
 from pykka import ActorRef, ThreadingActor
@@ -24,13 +25,14 @@ MARKERS = Namespace(
 )
 
 
-class WsSub(NamedTuple):
+@dataclass(frozen=True)
+class WsSub:
     """Represents a websocket subscription."""
 
     url: str
     subs: str
     job_id: int
-    job_name: str = None
+    job_name: str | None = None
 
 
 class ProxyWatcher(ThreadingActor):
@@ -82,7 +84,8 @@ class ProxyWatcher(ThreadingActor):
             and MARKERS.ws_action in buffer
         ):
             url = old_buffer[old_buffer.index(MARKERS.ws_host) :]
-            self.mgr.tell(WsSub(url=url, subs=buffer, job_id=_extract_job_id(buffer)))
+            if (job_id := _extract_job_id(buffer)) is not None:
+                self.mgr.tell(WsSub(url=url, subs=buffer, job_id=job_id))
 
 
 def _extract_job_id(buffer: str) -> int | None:

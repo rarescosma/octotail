@@ -8,7 +8,7 @@ from collections import deque
 from contextlib import suppress
 from pathlib import Path
 from queue import Empty
-from typing import NamedTuple, Union
+from typing import Deque, NamedTuple, Union
 
 from fake_useragent import UserAgent
 from pyppeteer import launch
@@ -17,7 +17,7 @@ from pyppeteer.page import Page
 from pyppeteer_stealth import stealth
 from xdg.BaseDirectory import xdg_cache_home
 
-from octotail.utils import Opts, log, debug
+from octotail.utils import Opts, debug, log
 
 COOKIE_JAR = Path(xdg_cache_home) / "octotail" / "gh-cookies.json"
 
@@ -56,14 +56,20 @@ CHROME_ARGS = [
 
 
 class VisitRequest(NamedTuple):
+    """Visit request message."""
+
     url: str
 
 
 class CloseRequest(NamedTuple):
+    """Close request message."""
+
     job_id: int
 
+
 class ExitRequest:
-    pass
+    """Exit request message."""
+
 
 type BrowseRequest = Union[VisitRequest, CloseRequest, ExitRequest]
 
@@ -91,21 +97,21 @@ async def launch_browser(headless: bool) -> Browser:
 async def _browser(opts: Opts, queue: mp.Queue) -> None:
     browser = None
     tasks = set()
-    open_pages = dict()
+    open_pages = {}
     in_progress = aio.Event()
-    mini_q = deque()
+    mini_q: Deque[VisitRequest] = deque()
 
-    async def navigate(_browser: Browser, url: str):
-        page = await _browser.newPage()
-        job_id = int(url.split("/")[-1])
-        open_pages[job_id] = page
-        await page.goto(url)
+    async def _navigate(_browser: Browser, _url: str) -> None:
+        _page = await _browser.newPage()
+        _job_id = int(_url.split("/")[-1])
+        open_pages[_job_id] = _page
+        await _page.goto(_url)
 
-    def _schedule(_url):
+    def _schedule(_url: str) -> None:
         in_progress.set()
-        task = aio.create_task(navigate(browser, _url))
-        tasks.add(task)
-        task.add_done_callback(tasks.discard)
+        _task = aio.create_task(_navigate(browser, _url))
+        tasks.add(_task)
+        _task.add_done_callback(tasks.discard)
 
     browser = await launch_browser(opts.headless)
     start_page = (await browser.pages())[0]
