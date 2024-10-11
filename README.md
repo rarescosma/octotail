@@ -4,10 +4,33 @@ Live tail GitHub Action runs on `git push`. It's cursed.
 
 ![](https://raw.githubusercontent.com/rarescosma/octotail/main/examples/demo_v0.gif)
 
+## Motivation
+
+I *really* liked how [Codecrafters][] test runs are mirrored back right in the 
+terminal when you `git push`, so I thought: "surely this is something the gh
+CLI supports". [It doesn't.](https://github.com/cli/cli/issues/3484)
+
+A couple of hours of messing with HTTPS mitm proxies, websockets, headless
+browsers, you-name-it, and __octotail__ was born.
+
+## Wait, what?!
+
+Invoked with a `commit_sha` and a `workflow_name`, it will poll the GitHub
+API for a matching workflow run. When jobs associated with the run start,
+it'll instruct a headless chromium-based browser to visit the job's page.
+
+The browser's traffic passes through a [mitmproxy][] instance that it'll
+use to extract the authenticated WebSockets subscriptions for live tailing.
+
+These are then passed to the tailing workers.
+
+The headless browser tabs are cleaned up immediately after the WebSockets
+extraction, so the overhead is minimal. (well, it's still an empty browser)
+
 ## Prerequisites
 
 - python 3.12
-- a working Chrome-based browser under `/usr/bin/chromium`
+- a working chromium-based browser under `/usr/bin/chromium`
 
 ## Installation
 
@@ -23,16 +46,10 @@ Make a virtual environment, activate it, and install requirements:
 ```shell
 python3 -m venv .venv
 source .venv/bin/activate
-pip3 install -r requirements.txt
+poetry install --no-dev
 ```
 
-Install the package itself:
-
-```shell
-pip3 install -e .
-```
-
-Make sure `/usr/bin/chromium` points to a working Chrome-based browser.
+Make sure `/usr/bin/chromium` points to a working chromium-based browser.
 
 If unsure, and on Arch:
 
@@ -86,8 +103,9 @@ remote and set up its post-receive hook to call this cursed script.
 ```shell
 cd your-original-repo
 export ORIG_REMOTE="$(git remote get-url origin)"
-export PROXY_REPO="${HOME}/src/proxy-repo"
+export PROXY_REPO="${HOME}/src/proxy-repo"   # <-- you can change this
 
+mkdir -p $PROXY_REPO
 git clone --mirror $ORIG_REMOTE $PROXY_REPO
 git remote add proxy $PROXY_REPO
 # back to octotail
@@ -125,3 +143,4 @@ git push proxy
 ```
 
 [Codecrafters]: https://codecrafters.io/
+[mitmproxy]: https://mitmproxy.org/
