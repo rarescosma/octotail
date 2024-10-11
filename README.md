@@ -2,7 +2,7 @@
 
 Live tail GitHub Action runs on `git push`. It's cursed.
 
-<img src="https://github.com/user-attachments/assets/1813ffc3-a101-48b5-92c2-634c2468670d" width="1200px">
+![](https://raw.githubusercontent.com/rarescosma/octotail/main/examples/demo_v0.gif)
 
 ## Prerequisites
 
