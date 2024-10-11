@@ -10,9 +10,10 @@ import websockets.client
 
 from octotail.mitm import WsSub
 from octotail.utils import log
+from octotail.browser import RANDOM_UA
 
 WS_HEADERS = {
-    "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:131.0) Gecko/20100101 Firefox/131.0",
+    "User-Agent": RANDOM_UA,
     "Origin": "https://github.com",
     "Sec-Fetch-Dest": "empty",
     "Sec-Fetch-Mode": "websocket",

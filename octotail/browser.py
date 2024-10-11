@@ -20,6 +20,7 @@ from xdg.BaseDirectory import xdg_cache_home
 from octotail.utils import Opts, debug, log
 
 COOKIE_JAR = Path(xdg_cache_home) / "octotail" / "gh-cookies.json"
+RANDOM_UA = UserAgent().random
 
 CHROME_ARGS = [
     '--cryptauth-http-host ""',
@@ -50,7 +51,7 @@ CHROME_ARGS = [
     "--password-store=basic",
     "--use-mock-keychain",
     '--lang="en-US"',
-    f'--user-agent="{UserAgent().random}"',
+    f'--user-agent="{RANDOM_UA}"',
     "--proxy-server=127.0.0.1:8080",
 ]
 
