@@ -27,6 +27,12 @@ source .venv/bin/activate
 pip3 install -r requirements.txt
 ```
 
+Install the package itself:
+
+```shell
+pip3 install -e .
+```
+
 Make sure `/usr/bin/chromium` points to a working Chrome-based browser.
 
 If unsure, and on Arch:
@@ -47,8 +53,8 @@ sudo trust anchor ~/.mitmproxy/mitmproxy-ca-cert.cer
 ## Usage
 
 ```
-# ./main.py --help
-Usage: main.py [OPTIONS] COMMIT_SHA WORKFLOW
+# octotail --help
+Usage: octotail [OPTIONS] COMMIT_SHA WORKFLOW
 
 Arguments:
   COMMIT_SHA  [required]
@@ -57,7 +63,8 @@ Arguments:
 Options:
   --gh-user TEXT              [env var: _GH_USER; required]
   --gh-pass TEXT              [env var: _GH_PASS; required]
-  --gh-token TEXT             [env var: _GH_TOKEN; required]
+  --gh-otp TEXT               [env var: _GH_OTP; required]
+  --gh-pat TEXT               [env var: _GH_PAT; required]
   --headless / --no-headless  [env var: _HEADLESS; default: headless]
   --help                      Show this message and exit.
 ```
@@ -99,18 +106,20 @@ your setup:
 - set `_ACTION_CAT` to the path where you actually cloned this repo
 - set `_GH_USER` to your GitHub username
 - set `_GH_PASS_CMD` to a command that outputs the GitHub password, e.g. 
-  `_GH_PASS="pass github"`
-- _if using 2FA_ - set `_GH_TOKEN_CMD` to a command that outputs an OTP token 
-  for the GitHub 2FA, e.g. `_GH_PASS="totp github"`
+  `_GH_PASS_CMD="pass github.com"`
+- _if using 2FA_ - set `_GH_OTP_CMD` to a command that outputs an OTP token 
+  for the GitHub 2FA, e.g. `_GH_OTP_CMD="totp github.com"`
+- set `_GH_PAT_CMD` to a command that outputs your GitHub PAT token, e.g.
+  `_GH_PAT_CMD="pass github_pat"`
 - set `_WORKFLOW` to the name of the workflow whose runs you want to tail
 - replace `"refs/heads/main"` with `refs/tags/*` (without the quotes) if
   you expect the workflow to run on tags
 
-NOTE: the hook assumes you're using `zsh`, change the shebang to your own shell,
-just make sure to invoke it with the right flags to get an interactive, login
-shell. Useful to get access to custom functions and aliases.
+NOTE: the hook assumes you're using `zsh`. You can change the shebang to your 
+own shell, just make sure to invoke it with the right flags to get an 
+interactive, login shell. Useful to get access to custom functions and aliases.
 
-That's it! (phew) - no try pushing some commits to the `proxy` remote and check
+That's it! (phew) - now try pushing some commits to the `proxy` remote and check
 if you get the GitHub action logs streaming right back:
 
 ```shell

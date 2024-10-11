@@ -81,7 +81,7 @@ def main(opts: Opts) -> None:
     if (repo_id := guess_repo()) is None:
         sys.exit(1)
 
-    g = Github(auth=Auth.Token(opts.gh_token))
+    g = Github(auth=Auth.Token(opts.gh_pat))
     gh_repo = g.get_repo(repo_id)
     gha_run = get_active_run(gh_repo, opts.commit_sha, opts.workflow)
     if not isinstance(gha_run, WorkflowRun):

@@ -150,7 +150,7 @@ async def _login_flow(page: Page, opts: Opts) -> str:
     await page.keyboard.press("Enter")
     await page.waitForSelector("#app_totp", timeout=30000)
 
-    await page.type("#app_totp", opts.gh_token)
+    await page.type("#app_totp", opts.gh_otp)
     await page.keyboard.press("Enter")
     await page.waitForSelector(f"[data-login='{opts.gh_user}']")
 

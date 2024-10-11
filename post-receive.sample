@@ -4,7 +4,7 @@ _OCTOTAIL="${HOME}/src/octotail"
 _GH_USER="github-user-here"
 _GH_PASS_CMD="zenity --entry --hide-text --title='GitHub' --text='Enter password:'"
 _GH_OTP_CMD="zenity --entry --hide-text --title='GitHub' --text='Enter OTP token:'"
-_GH_TOKEN_CMD="zenity --entry --hide-text --title='GitHub' --text='Enter PAT:'"
+_GH_PAT_CMD="zenity --entry --hide-text --title='GitHub' --text='Enter PAT:'"
 _WORKFLOW="workflow-name-here"
 
 # add --no-force to prevent overwriting the actual remote refs
@@ -22,6 +22,6 @@ while read old_oid new_oid ref_name; do
       --gh-user "$_GH_USER"                      \
       --gh-pass "$(eval $_GH_PASS_CMD)"          \
       --gh-otp "$(eval $_GH_OTP_CMD)"            \
-      --gh-otp "$(eval $_GH_TOKEN_CMD)"
+      --gh-pat "$(eval $_GH_PAT_CMD)"
   fi
 done

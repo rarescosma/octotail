@@ -68,7 +68,7 @@ class Opts(NamedTuple):
     gh_user: str
     gh_pass: str
     gh_otp: str
-    gh_token: str
+    gh_pat: str
     headless: bool
 
 
@@ -80,10 +80,10 @@ def cli(main: Callable[[Opts], None]) -> Callable:
         gh_user: Annotated[str, typer.Option(envvar="_GH_USER")],
         gh_pass: Annotated[str, typer.Option(envvar="_GH_PASS")],
         gh_otp: Annotated[str, typer.Option(envvar="_GH_OTP")],
-        gh_token: Annotated[str, typer.Option(envvar="_GH_TOKEN")],
+        gh_pat: Annotated[str, typer.Option(envvar="_GH_PAT")],
         headless: Annotated[bool, typer.Option(envvar="_HEADLESS")] = True,
     ) -> None:
-        opts = Opts(commit_sha, workflow, gh_user, gh_pass, gh_otp, gh_token, headless)
+        opts = Opts(commit_sha, workflow, gh_user, gh_pass, gh_otp, gh_pat, headless)
         main(opts)
 
     return _inner
