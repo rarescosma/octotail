@@ -16,7 +16,7 @@ browsers, you-name-it, and __octotail__ was born.
 ## Wait, what?!
 
 Invoked with a `commit_sha` and a `workflow_name`, it will poll the GitHub
-API for a matching workflow run. When jobs associated with the run start,
+API for a matching workflow run. When a job associated with the run starts,
 it'll instruct a headless chromium-based browser to visit the job's page.
 
 The browser's traffic passes through a [mitmproxy][] instance that it'll
