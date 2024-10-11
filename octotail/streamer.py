@@ -33,12 +33,12 @@ def _streamer(ws_sub: WsSub, lock: LockBase) -> None:
     loop = aio.new_event_loop()
     aio.set_event_loop(loop)
     try:
-        loop.run_until_complete(stream_it(ws_sub, lock))
+        loop.run_until_complete(_stream_it(ws_sub, lock))
     except KeyboardInterrupt:
         loop.close()
 
 
-async def stream_it(ws_sub: WsSub, lock: LockBase) -> None:
+async def _stream_it(ws_sub: WsSub, lock: LockBase) -> None:
     ws_url = "wss://" + ws_sub.url.removeprefix("https://")
     job_name = ws_sub.job_name or "unknown"
 
