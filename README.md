@@ -7,7 +7,6 @@ Live tail GitHub Action runs on `git push`. It's cursed.
 ## Prerequisites
 
 - python 3.12
-- gh CLI
 - a working Chrome-based browser under `/usr/bin/chromium`
 
 ## Installation
