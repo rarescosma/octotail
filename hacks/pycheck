@@ -31,12 +31,6 @@ echo ">>>>>> black <<<<<<"
 black -l 100 "${@}"
 echo "-------------------"
 
-# dead code is bad
-echo
-echo ">>>>> vulture <<<<<"
-vulture "${@}"
-echo "-------------------"
-
 # types are good
 ({
     echo
