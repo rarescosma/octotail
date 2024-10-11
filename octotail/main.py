@@ -49,7 +49,7 @@ class Manager(ThreadingActor):
 
         match msg:
             case WorkflowJob() as job:
-                self.browse_queue.put_nowait(VisitRequest(job.html_url))
+                self.browse_queue.put_nowait(VisitRequest(job.html_url, job.id))
                 self.job_map[job.id] = job.name
 
             case WsSub() as ws_sub:

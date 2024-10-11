@@ -8,7 +8,7 @@ from collections import deque
 from contextlib import suppress
 from pathlib import Path
 from queue import Empty
-from typing import Deque, NamedTuple, Union
+from typing import Deque, Dict, NamedTuple, Union
 
 from fake_useragent import UserAgent
 from pyppeteer import launch
@@ -60,6 +60,7 @@ class VisitRequest(NamedTuple):
     """Visit request message."""
 
     url: str
+    job_id: int
 
 
 class CloseRequest(NamedTuple):
@@ -98,21 +99,20 @@ async def launch_browser(headless: bool) -> Browser:
 async def _browser(opts: Opts, inbox: mp.Queue) -> None:
     browser = await launch_browser(opts.headless)
     tasks = set()
-    open_pages = {}
+    open_pages: Dict[int, Page] = {}
     in_progress = aio.Event()
     visit_queue: Deque[VisitRequest] = deque()
 
-    def _schedule_visit(_url: str) -> None:
+    def _schedule_visit(_visit_req: VisitRequest) -> None:
         in_progress.set()
-        _task = aio.create_task(_visit(_url))
+        _task = aio.create_task(_visit(_visit_req))
         tasks.add(_task)
         _task.add_done_callback(tasks.discard)
 
-    async def _visit(_url: str) -> None:
+    async def _visit(_visit_req: VisitRequest) -> None:
         _page = await browser.newPage()
-        _job_id = int(_url.split("/")[-1])
-        open_pages[_job_id] = _page
-        await _page.goto(_url)
+        open_pages[_visit_req.job_id] = _page
+        await _page.goto(_visit_req.url)
 
     start_page = (await browser.pages())[0]
     await stealth(start_page)
@@ -126,7 +126,7 @@ async def _browser(opts: Opts, inbox: mp.Queue) -> None:
     while True:
         with suppress(Empty):
             if not in_progress.is_set() and visit_queue:
-                _schedule_visit(visit_queue.pop().url)
+                _schedule_visit(visit_queue.pop())
                 continue
 
             match inbox.get_nowait():
@@ -142,7 +142,7 @@ async def _browser(opts: Opts, inbox: mp.Queue) -> None:
                     if in_progress.is_set():
                         visit_queue.appendleft(visit_req)
                     else:
-                        _schedule_visit(visit_req.url)
+                        _schedule_visit(visit_req)
 
         await aio.sleep(0.5)
 
