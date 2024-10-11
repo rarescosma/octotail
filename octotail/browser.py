@@ -90,7 +90,8 @@ async def launch_browser(opts: Opts) -> Browser:
         executablePath="/usr/bin/chromium",
         options={
             "args": [*CHROME_ARGS, f"--proxy-server=127.0.0.1:{opts.port}"],
-            "autoClose": True,
+            "autoClose": False,
+            "handleSIGINT": False,
         },
     )
 
