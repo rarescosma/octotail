@@ -116,4 +116,6 @@ def is_port_open(port: int) -> int:
 def _sha_callback(value: str) -> str:
     if len(value) != 40:
         raise typer.BadParameter("need a full 40 character long commit sha")
+    if value == 40 * "0":
+        raise typer.BadParameter("refusing to work with the all-zero commit sha")
     return value
