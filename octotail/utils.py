@@ -1,29 +1,13 @@
-"""Asyncio and other nuggets."""
+"""Bits and pieces."""
 
-import asyncio as aio
 import inspect
-from typing import (
-    Awaitable,
-    Callable,
-    Concatenate,
-    Coroutine,
-    Generic,
-    NamedTuple,
-    Tuple,
-    TypeVar,
-    cast,
-)
+import os
+import time
+from typing import Annotated, Callable, Generic, NamedTuple, TypeVar
 
+import typer
 
-async def run_cmd(cmd: str) -> Tuple[bytes, bytes, int]:
-    handle = await aio.create_subprocess_shell(
-        cmd,
-        stdout=aio.subprocess.PIPE,
-        stderr=aio.subprocess.PIPE,
-    )
-    out, err = await handle.communicate()
-    return out, err, cast(int, handle.returncode)
-
+DEBUG = os.getenv("DEBUG") not in ["0", "false", "False", None]
 
 T = TypeVar("T")
 
@@ -41,33 +25,71 @@ class Ok(NamedTuple, Generic[T]):
 type Result[T] = Ok[T] | RuntimeError | Retry
 
 
+def log(msg: str, stack_offset: int = 1) -> None:
+    fn = inspect.stack()[stack_offset].function
+    print(f"[{fn}]: {msg}")
+
+
+def debug(msg: str):
+    if DEBUG:
+        log(msg, 2)
+
+
 def retries[
     **P
 ](num_retries: int, sleep_time: float) -> Callable[
-    [Callable[P, Awaitable[Result]]], Callable[Concatenate[aio.Queue, P], Coroutine]
+    [Callable[P, Result | Retry]], Callable[P, Result]
 ]:
     """ "just put a retry loop around it" """
 
-    def wrapper(
-        fn: Callable[P, Awaitable[Result]]
-    ) -> Callable[Concatenate[aio.Queue, P], Coroutine]:
-        async def wrapped(q: aio.Queue, *args: P.args, **kwargs: P.kwargs) -> None:
+    def wrapper(fn: Callable[P, Result | Retry]) -> Callable[P, Result]:
+        def wrapped(*args: P.args, **kwargs: P.kwargs) -> Result:
             for _ in range(0, num_retries):
-                match await fn(*args, **kwargs):
+                match fn(*args, **kwargs):
                     case Ok(x):
-                        return await q.put(x)
+                        return x
                     case Retry():
-                        await aio.sleep(sleep_time)
+                        time.sleep(sleep_time)
                         continue
                     case RuntimeError() as e:
-                        return await q.put(e)
-            await q.put(RuntimeError(f"retries exceeded in '{fn.__name__}'"))
+                        return e
+            return RuntimeError(f"retries exceeded in '{fn.__name__}'")
 
         return wrapped
 
     return wrapper
 
 
-def log(msg: str) -> None:
-    fn = inspect.stack()[1].function
-    print(f"[{fn}]: {msg}")
+class Opts(NamedTuple):
+    """Holds common options."""
+
+    commit_sha: str
+    workflow: str
+    gh_user: str
+    gh_pass: str
+    gh_otp: str
+    gh_token: str
+    headless: bool
+
+
+def cli(main: Callable[[Opts], None]) -> Callable:
+    # pylint: disable=R0913,R0917
+    def _inner(
+        commit_sha: Annotated[str, typer.Argument(callback=_sha_callback)],
+        workflow: str,
+        gh_user: Annotated[str, typer.Option(envvar="_GH_USER")],
+        gh_pass: Annotated[str, typer.Option(envvar="_GH_PASS")],
+        gh_otp: Annotated[str, typer.Option(envvar="_GH_OTP")],
+        gh_token: Annotated[str, typer.Option(envvar="_GH_TOKEN")],
+        headless: Annotated[bool, typer.Option(envvar="_HEADLESS")] = True,
+    ) -> None:
+        opts = Opts(commit_sha, workflow, gh_user, gh_pass, gh_otp, gh_token, headless)
+        main(opts)
+
+    return _inner
+
+
+def _sha_callback(value: str) -> str:
+    if len(value) != 40:
+        raise typer.BadParameter("need a full 40 character long commit sha")
+    return value

@@ -1,138 +1,108 @@
 #!/usr/bin/env -S /bin/sh -c 'exec "$(dirname $(readlink -f "$0"))/../.venv/bin/python3" "$0" "$@"'
-"""
-Have the cake and tail it too.
-"""
-import asyncio as aio
-import json
-import os
+
+"""Having your cake and eating it too."""
+import multiprocessing as mp
 import sys
-from contextlib import suppress
-from functools import partial
+from multiprocessing.synchronize import Lock as LockBase
 from pathlib import Path
+from threading import Event
+from typing import Union, Dict
 
 import typer
-from pyppeteer.browser import Browser
-from pyppeteer.page import Page
-from pyppeteer_stealth import stealth
-from xdg.BaseDirectory import xdg_cache_home, xdg_data_home
+from github import Auth, Github
+from github.WorkflowJob import WorkflowJob
+from github.WorkflowRun import WorkflowRun
+from pykka import ActorRegistry, ThreadingActor
+from xdg.BaseDirectory import xdg_cache_home
 
-from .browser import launch_browser, login_flow, nom_cookies
-from .cli import Opts, cli
-from .mitm import get_websocket, start_proxy
-from .utils import Ok, Result, Retry, log, retries, run_cmd
-from .ws import stream_it
+from octotail.browser import run_browser, VisitRequest, CloseRequest, ExitRequest
+from octotail.gh import RunWatcher, get_active_run, guess_repo, JobDone, WorkflowDone
+from octotail.mitm import ProxyWatcher, WsSub
+from octotail.streamer import run_streamer
+from octotail.utils import Opts, cli, log, debug
 
 COOKIE_JAR = Path(xdg_cache_home) / "octotail" / "gh-cookies.json"
-PROXY_FILE = Path(xdg_data_home) / "octotail" / "proxy.out"
-DEBUG = os.getenv("DEBUG") not in ["0", "false", "False", None]
+
+type MgrMessage = Union[WorkflowJob, WsSub, JobDone]
 
 
-async def browse_to_action(q: aio.Queue, opts: Opts) -> RuntimeError | None:
-    browser = page = None
+class Manager(ThreadingActor):
+    """I'm the Baahwss."""
 
-    async def cleanup(_page: Page, _browser: Browser) -> None:
-        if _page:
-            await _page.close()
-        if _browser:
-            await _browser.close()
+    browse_queue: mp.Queue
+    stop: Event
+    background_tasks: Dict[int, mp.Process]
+    output_lock: LockBase
+    job_map: Dict[int, str]
 
-    try:
-        browser = await launch_browser(opts.headless)
+    def __init__(self, browse_queue: mp.Queue, stop: Event):
+        super().__init__()
+        self.browse_queue = browse_queue
+        self.stop = stop
+        self.background_tasks = {}
+        self.output_lock = mp.Lock()
+        self.job_map = {}
 
-        page = await browser.newPage()
-        await stealth(page)
+    def on_receive(self, msg: MgrMessage) -> None:
+        debug(f"manager got message: {msg!r}")
+        match msg:
+            case WorkflowJob():
+                self.browse_queue.put_nowait(VisitRequest(msg.html_url))
+                self.job_map[msg.id] = msg.name
 
-        if not await nom_cookies(page, COOKIE_JAR):
-            log("logging in to GitHub")
-            cookies = await login_flow(page, opts)
-            COOKIE_JAR.parent.mkdir(parents=True, exist_ok=True)
-            COOKIE_JAR.write_text(cookies)
+            case JobDone():
+                print(f"[{msg.job_name}] conclusion: {msg.conclusion}")
+                if (streamer := self.background_tasks.get(msg.job_id)) is not None:
+                    streamer.terminate()
+                    del self.background_tasks[msg.job_id]
 
-        run_url = await q.get()
-        if isinstance(run_url, RuntimeError):
-            return run_url
+            case WsSub():
+                if msg.job_id in self.job_map:
+                    msg = msg._replace(job_name=self.job_map[msg.job_id])
+                self.browse_queue.put_nowait(CloseRequest(msg.job_id))
+                self.background_tasks[msg.job_id] = run_streamer(msg, self.output_lock)
 
-        await page.goto(run_url)
-        spinner = await page.waitForSelector(
-            ".WorkflowJob-title .anim-rotate, .WorkflowJob-title .hx_dot-fill-pending-icon"
-        )
-        href = await page.evaluate(
-            """ (element) => { 
-                let p = element; 
-                while (!p.hasAttribute('href')) { p = p.parentNode; }; 
-                return p.href; } """,
-            spinner,
-        )
-        await page.goto(href)
-        # FIXME - gotta get that mitmproxy to stream to some in-memory location
-        # so we can catch the websockets early
-        # await page.waitForSelector(".js-socket-channel[data-job-status='in_progress']")
-        await aio.sleep(2)
-    finally:
-        await cleanup(page, browser)
+            case WorkflowDone():
+                print(f"workflow conclusion: {msg.conclusion}")
+                self.browse_queue.put_nowait(ExitRequest())
+                self.stop.set()
 
-    return None
-
-
-@retries(10, 0.5)
-async def get_run_url(opts: Opts) -> Result[str]:
-    valid_statuses = ["queued", "in_progress", "requested", "waiting", "action_required"]
-    # farm out to gh CLI the listing of a run that matches the SHA
-    list_cmd = f"gh run list -c {opts.commit_sha} -w {opts.workflow} --json url,status,databaseId"
-
-    out, err, ret_code = await run_cmd(list_cmd)
-    if ret_code != 0:
-        log(f"gh error: {err.decode().strip()}")
-        return Retry()
-
-    with suppress(Exception):
-        gh_run = json.loads(out.decode().strip())[0]
-
-        if not gh_run.get("status") in valid_statuses:
-            log(f"cannot process run in state: '{gh_run.get("status")}'")
-            log(f"try:\n\n\tgh run view {gh_run.get("databaseId")} --log\n")
-            log(f"or try browsing to:\n\n\t{gh_run.get("url")}\n")
-            return RuntimeError("invalid action state")
-
-        log(f"got run url: {gh_run["url"]}")
-        return Ok(gh_run["url"])
-
-    if DEBUG:
-        log(f"gh out: {out.decode()}; gh err: {err.decode()}")
-    return Retry()
+    def on_stop(self) -> None:
+        log("manager stopping")
+        self.browse_queue.put_nowait(ExitRequest())
+        for p in self.background_tasks.values():
+            p.terminate()
 
 
 @cli
-async def main(opts: Opts) -> None:
-    log(f"processing commit SHA: '{opts.commit_sha}'")
+def main(opts: Opts) -> None:
+    _stop = Event()
 
-    # 1. boot up mitmproxy in a separate thread
-    _kill_proxy = await start_proxy(PROXY_FILE)
-
-    # 2. use gh CLI to get the action URL
-    # 3. log into github via headless browser
-    url_q: aio.Queue[str | Exception] = aio.Queue(maxsize=1)
-    abort = False
-    for ret in await aio.gather(
-        partial(get_run_url, url_q)(opts),  # pylint: disable=E1121
-        browse_to_action(url_q, opts),
-        return_exceptions=True,
-    ):
-        if isinstance(ret, Exception):
-            log(f"got exception: {ret}")
-            abort = True
-
-    # 4. murder the proxy
-    _kill_proxy()
-    if abort:
+    if (repo_id := guess_repo()) is None:
         sys.exit(1)
 
-    # 5. start streaming
-    if (url_sub := get_websocket(PROXY_FILE)) is not None:
-        ws_url, ws_sub = url_sub
-        await stream_it(ws_url, ws_sub)
-    else:
-        log(f"could not extract websockets URL or subs from {PROXY_FILE}")
+    g = Github(auth=Auth.Token(opts.gh_token))
+    gh_repo = g.get_repo(repo_id)
+    gha_run = get_active_run(gh_repo, opts.commit_sha, opts.workflow)
+    if not isinstance(gha_run, WorkflowRun):
+        sys.exit(1)
+
+    # pylint: disable=E1136
+    url_queue: mp.Queue[str] = mp.Queue()
+
+    mp.Process(target=run_browser, args=(opts, url_queue)).start()
+    manager = Manager.start(url_queue, _stop)
+    run_watcher = RunWatcher.start(gha_run, manager, _stop)
+    proxy_watcher = ProxyWatcher.start(manager, _stop)
+
+    h1 = run_watcher.proxy().watch()
+    h2 = proxy_watcher.proxy().watch()
+    try:
+        h1.join(h2).get()
+    except KeyboardInterrupt:
+        _stop.set()
+
+    ActorRegistry.stop_all()
 
 
 def _main() -> None:

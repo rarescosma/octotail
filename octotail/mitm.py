@@ -1,71 +1,113 @@
-"""Mitmproxy-related routines."""
+"""Mitmproxy actor."""
 
-import asyncio as aio
+import base64
+import copy
 import json
 import multiprocessing
 import socket
 import sys
-from pathlib import Path
-from typing import Callable, Iterable, Optional, Tuple, cast
+from argparse import Namespace
+from contextlib import suppress
+from queue import Empty
+from threading import Event
+from typing import List, NamedTuple
 
-from mitmproxy.http import HTTPFlow
-from mitmproxy.io import FlowReader
 from mitmproxy.tools.main import mitmdump
+from pykka import ActorRef, ThreadingActor
 
-from .utils import log
+from octotail.utils import Ok, Result, Retry, retries
 
-
-async def start_proxy(proxy_file: Path) -> Callable:
-    proxy_ps = multiprocessing.Process(target=_mitmdump_wrapper, args=(proxy_file,))
-    proxy_ps.start()
-
-    def _kill_proxy() -> None:
-        proxy_ps.terminate()
-        proxy_ps.join()
-
-    if not await _check_proxy(proxy_ps):
-        log("proxy didn't go live; bailing...")
-        _kill_proxy()
-        sys.exit(1)
-
-    return _kill_proxy
+MARKERS = Namespace(
+    ws_header="WebSocket text message",
+    ws_host="alive.github.com",
+    ws_action='"subscribe":',
+)
 
 
-def _mitmdump_wrapper(proxy_file: Path) -> None:
-    proxy_file.parent.mkdir(parents=True, exist_ok=True)
-    sys.argv = f"mitmdump -q -w {proxy_file}".split()
+class WsSub(NamedTuple):
+    """Represents a websocket subscription."""
+
+    url: str
+    subs: str
+    job_id: int
+    job_name: str = None
+
+
+class ProxyWatcher(ThreadingActor):
+    """Watches for websocket subscriptions done through the mitmproxy."""
+
+    mgr: ActorRef
+    stop: Event
+    _proxy_ps: multiprocessing.Process
+    _q: multiprocessing.Queue
+
+    def __init__(self, mgr: ActorRef, stop: Event):
+        super().__init__()
+        self.mgr = mgr
+        self.stop = stop
+
+    def on_start(self) -> None:
+        self._q = multiprocessing.Queue()
+        self._proxy_ps = multiprocessing.Process(target=_mitmdump_wrapper, args=(self._q,))
+        self._proxy_ps.start()
+
+    def on_stop(self) -> None:
+        self._proxy_ps.terminate()
+        self._proxy_ps.join()
+
+    def watch(self) -> None:
+        if not _check_liveness(self._proxy_ps):
+            self.mgr.tell(RuntimeError("fatal: proxy didn't go live"))
+            self.stop.set()
+
+        old_line, buffer = "-", []
+        old_buffer: List[str] = []
+        while not self.stop.is_set():
+            with suppress(Empty):
+                line = self._q.get(timeout=2).strip()
+                if line:
+                    buffer.append(line)
+                elif old_line == "" and buffer:
+                    self._process_buffer("".join(buffer), "".join(old_buffer))
+                    old_buffer = copy.deepcopy(buffer)
+                    buffer = []
+                else:
+                    buffer.append(line)
+                old_line = line
+
+    def _process_buffer(self, buffer: str, old_buffer: str) -> None:
+        if (
+            MARKERS.ws_header in old_buffer
+            and MARKERS.ws_host in old_buffer
+            and MARKERS.ws_action in buffer
+        ):
+            url = old_buffer[old_buffer.index(MARKERS.ws_host) :]
+            self.mgr.tell(WsSub(url=url, subs=buffer, job_id=_extract_job_id(buffer)))
+
+
+def _extract_job_id(buffer: str) -> int | None:
+    with suppress(Exception):
+        dec = (base64.b64decode(k) for k in json.loads(buffer)["subscribe"].keys())
+        items = (str(json.loads(_[: _.index(b"}") + 1].decode())["c"]) for _ in dec)
+        good = next(item for item in items if item.startswith("check_runs"))
+        return int(good.split(":")[1])
+    return None
+
+
+def _mitmdump_wrapper(q: multiprocessing.Queue) -> None:
+    sys.argv = "mitmdump --flow-detail=4".split()
+    setattr(sys.stdout, "isatty", lambda: False)
+    setattr(sys.stdout, "write", q.put)
     mitmdump()
 
 
-async def _check_proxy(proxy_ps: multiprocessing.Process) -> bool:
-    for _ in range(0, 50):
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        res = sock.connect_ex(("127.0.0.1", 8080))
-        sock.close()
-        if res == 0:
-            return True
-        await aio.sleep(0.2)
-        if not proxy_ps.is_alive():
-            return False
-    return False
-
-
-def get_websocket(proxy_file: Path) -> Optional[Tuple[str, str]]:
-    if not proxy_file.exists() or not proxy_file.is_file():
-        return None
-
-    with open(proxy_file, "rb") as f:
-        reader = FlowReader(f)
-        wss = [
-            flow
-            for flow in cast(Iterable[HTTPFlow], reader.stream())
-            if flow.websocket is not None and flow.request.host.startswith("alive.github.com")
-        ]
-        if not wss:
-            return None
-        flow = wss[-1]
-        msgs = [m.text for m in flow.websocket.messages if "subscribe" in json.loads(m.text)]
-        if not msgs:
-            return None
-        log(f"success: '{flow.request.url}'")
-        return flow.request.url, msgs[0]
+@retries(50, 0.2)
+def _check_liveness(proxy_ps: multiprocessing.Process) -> Result[bool] | Retry:
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    res = sock.connect_ex(("127.0.0.1", 8080))
+    sock.close()
+    if res == 0:
+        return Ok(True)
+    if not proxy_ps.is_alive():
+        return Ok(False)
+    return Retry()
