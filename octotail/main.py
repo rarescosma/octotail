@@ -16,7 +16,7 @@ from github.WorkflowRun import WorkflowRun
 from pykka import ActorRegistry, ThreadingActor
 from xdg.BaseDirectory import xdg_cache_home
 
-from octotail.browser import CloseRequest, ExitRequest, VisitRequest, run_browser
+from octotail.browser import BrowseRequest, CloseRequest, ExitRequest, VisitRequest, run_browser
 from octotail.gh import JobDone, RunWatcher, WorkflowDone, get_active_run, guess_repo
 from octotail.mitm import ProxyWatcher, WsSub
 from octotail.streamer import run_streamer
@@ -89,10 +89,10 @@ def main(opts: Opts) -> None:
         sys.exit(1)
 
     # pylint: disable=E1136
-    url_queue: mp.Queue[str] = mp.Queue()
+    browse_queue: mp.Queue[BrowseRequest] = mp.Queue()
 
-    mp.Process(target=run_browser, args=(opts, url_queue)).start()
-    manager = Manager.start(url_queue, _stop)
+    mp.Process(target=run_browser, args=(opts, browse_queue)).start()
+    manager = Manager.start(browse_queue, _stop)
     run_watcher = RunWatcher.start(gha_run, manager, _stop)
     proxy_watcher = ProxyWatcher.start(manager, _stop)
 
