@@ -41,7 +41,7 @@ git clone https://github.com/rarescosma/octotail.git
 cd octotail
 ```
 
-Make a virtual environment, activate it, and install requirements:
+Make a virtual environment, activate it, and install the package.
 
 ```shell
 python3 -m venv .venv
@@ -97,16 +97,15 @@ A slightly more advanced use case that lets you stream the run outputs on
 to [Codecrafters][].
 
 For this to work we'll need control over the remote's output, so we can't use
-the GitHub remote directly. Instead, we'll use a bare repository a our "proxy"
-remote and set up its post-receive hook to call this cursed script.
+the GitHub remote directly. Instead, we'll use a bare repository as our "proxy"
+remote and set up its post-receive hook to call `octotail`.
 
 ```shell
 cd your-original-repo
-export ORIG_REMOTE="$(git remote get-url origin)"
-export PROXY_REPO="${HOME}/src/proxy-repo"   # <-- you can change this
+export PROXY_REPO="/wherever/you/want/to/store/the/proxy-repo"
 
 mkdir -p $PROXY_REPO
-git clone --mirror $ORIG_REMOTE $PROXY_REPO
+git clone --mirror "$(git remote get-url origin)" $PROXY_REPO
 git remote add proxy $PROXY_REPO
 # back to octotail
 cd -
