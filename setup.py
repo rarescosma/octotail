@@ -14,7 +14,7 @@ dependency_links = [x.strip().replace("git+", "") for x in all_reqs if x.startsw
 
 setup(
     name="octotail",
-    version="0.0.1",
+    version="1.0.0",
     description="Live tail GitHub Actions runs on git push.",
     entry_points={
         "console_scripts": ["octotail=octotail.main:_main"],
