@@ -85,19 +85,16 @@ the GitHub remote directly. Instead, we'll use a bare repository a our "proxy"
 remote and set up its post-receive hook to call this cursed script.
 
 ```shell
-export PROXY_REPO="${HOME}/src/proxy-repo"
-git init --bare $PROXY_REPO
-
 cd your-original-repo
 export ORIG_REMOTE="$(git remote get-url origin)"
+export PROXY_REPO="${HOME}/src/proxy-repo"
+
+git clone --mirror $ORIG_REMOTE $PROXY_REPO
 git remote add proxy $PROXY_REPO
-git push proxy --all
+# back to octotail
 cd -
 
 cp post-receive.sample $PROXY_REPO/hooks/post-receive
-cd $PROXY_REPO
-git remote add origin $ORIG_REMOTE
-cd -
 ```
 
 Edit `$PROXY_REPO/hooks/post-receive` and change things according to 
