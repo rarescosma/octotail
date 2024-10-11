@@ -42,9 +42,8 @@ async def _stream_it(ws_sub: WsSub, lock: LockBase) -> None:
     ws_url = "wss://" + ws_sub.url.removeprefix("https://")
     job_name = ws_sub.job_name or "unknown"
 
-    websocket = None
-    try:
-        async with websockets.client.connect(ws_url, extra_headers=WS_HEADERS) as websocket:
+    async for websocket in websockets.client.connect(ws_url, extra_headers=WS_HEADERS):
+        try:
             await websocket.send(ws_sub.subs)
             async for msg in websocket:
                 lines = _extract_lines(job_name, msg)
@@ -52,10 +51,11 @@ async def _stream_it(ws_sub: WsSub, lock: LockBase) -> None:
                     lock.acquire()
                     print(lines)
                     lock.release()
-    except aio.CancelledError:
-        log("cancelled")
-        if websocket:
-            await websocket.close()
+        except aio.CancelledError:
+            log("cancelled")
+            if websocket:
+                await websocket.close()
+            return
 
 
 def _extract_lines(job_name: str, x: str) -> str:
