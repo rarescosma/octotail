@@ -2,7 +2,10 @@
 
 import inspect
 import os
+import random
+import socket
 import time
+from dataclasses import dataclass
 from typing import Annotated, Callable, Generic, NamedTuple, TypeVar
 
 import typer
@@ -60,7 +63,8 @@ def retries[
     return wrapper
 
 
-class Opts(NamedTuple):
+@dataclass(frozen=True)
+class Opts:
     """Holds common options."""
 
     commit_sha: str
@@ -70,6 +74,7 @@ class Opts(NamedTuple):
     gh_otp: str
     gh_pat: str
     headless: bool
+    port: int | None
 
 
 def cli(main: Callable[[Opts], None]) -> Callable:
@@ -82,11 +87,30 @@ def cli(main: Callable[[Opts], None]) -> Callable:
         gh_otp: Annotated[str, typer.Option(envvar="_GH_OTP")],
         gh_pat: Annotated[str, typer.Option(envvar="_GH_PAT")],
         headless: Annotated[bool, typer.Option(envvar="_HEADLESS")] = True,
+        port: Annotated[int | None, typer.Option(envvar="_PORT")] = None,
     ) -> None:
-        opts = Opts(commit_sha, workflow, gh_user, gh_pass, gh_otp, gh_pat, headless)
+        opts = Opts(commit_sha, workflow, gh_user, gh_pass, gh_otp, gh_pat, headless, port)
         main(opts)
 
     return _inner
+
+
+def find_free_port(min_port: int = 8100, max_port: int = 8500) -> int | None:
+    num_tries = 0
+    random_port = random.randint(min_port, max_port)
+    while not is_port_open(random_port):
+        if num_tries > 100:
+            return None
+        random_port = random.randint(min_port, max_port)
+        num_tries += 1
+    return random_port
+
+
+def is_port_open(port: int) -> int:
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    res = sock.connect_ex(("127.0.0.1", port))
+    sock.close()
+    return res != 0
 
 
 def _sha_callback(value: str) -> str:

@@ -52,7 +52,6 @@ CHROME_ARGS = [
     "--use-mock-keychain",
     '--lang="en-US"',
     f'--user-agent="{RANDOM_UA}"',
-    "--proxy-server=127.0.0.1:8080",
 ]
 
 
@@ -85,19 +84,19 @@ def run_browser(opts: Opts, q: mp.Queue) -> None:
         loop.close()
 
 
-async def launch_browser(headless: bool) -> Browser:
+async def launch_browser(opts: Opts) -> Browser:
     return await launch(
-        headless=headless,
+        headless=opts.headless,
         executablePath="/usr/bin/chromium",
         options={
-            "args": CHROME_ARGS,
+            "args": [*CHROME_ARGS, f"--proxy-server=127.0.0.1:{opts.port}"],
             "autoClose": True,
         },
     )
 
 
 async def _browser(opts: Opts, inbox: mp.Queue) -> None:
-    browser = await launch_browser(opts.headless)
+    browser = await launch_browser(opts)
     tasks = set()
     open_pages: Dict[int, Page] = {}
     in_progress = aio.Event()

@@ -20,7 +20,7 @@ from octotail.browser import BrowseRequest, CloseRequest, ExitRequest, VisitRequ
 from octotail.gh import JobDone, RunWatcher, WorkflowDone, get_active_run, guess_repo
 from octotail.mitm import ProxyWatcher, WsSub
 from octotail.streamer import run_streamer
-from octotail.utils import Opts, cli, debug, log
+from octotail.utils import Opts, cli, debug, find_free_port, log
 
 COOKIE_JAR = Path(xdg_cache_home) / "octotail" / "gh-cookies.json"
 
@@ -92,10 +92,20 @@ def main(opts: Opts) -> None:
     # pylint: disable=E1136
     browser_inbox: mp.Queue[BrowseRequest] = mp.Queue()
 
+    # find a free port
+    if opts.port is None:
+        if (port := find_free_port()) is not None:
+            opts = dataclasses.replace(opts, port=port)
+        else:
+            log("giving up finding a free port in the 8100 - 8500 range")
+            sys.exit(1)
+
+    debug(f"starting on port {opts.port}")
+
     mp.Process(target=run_browser, args=(opts, browser_inbox)).start()
     manager = Manager.start(browser_inbox, _stop)
     run_watcher = RunWatcher.start(wf_run, manager, _stop)
-    proxy_watcher = ProxyWatcher.start(manager, _stop)
+    proxy_watcher = ProxyWatcher.start(manager, _stop, opts.port)
 
     run_watcher_future = run_watcher.proxy().watch()
     proxy_watcher_future = proxy_watcher.proxy().watch()

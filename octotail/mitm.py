@@ -4,7 +4,6 @@ import base64
 import copy
 import json
 import multiprocessing
-import socket
 import sys
 from argparse import Namespace
 from contextlib import suppress
@@ -16,7 +15,7 @@ from typing import List
 from mitmproxy.tools.main import mitmdump
 from pykka import ActorRef, ThreadingActor
 
-from octotail.utils import Ok, Result, Retry, retries
+from octotail.utils import Ok, Result, Retry, is_port_open, retries
 
 MARKERS = Namespace(
     ws_header="WebSocket text message",
@@ -40,17 +39,21 @@ class ProxyWatcher(ThreadingActor):
 
     mgr: ActorRef
     stop: Event
+    port: int
     _proxy_ps: multiprocessing.Process
     _q: multiprocessing.Queue
 
-    def __init__(self, mgr: ActorRef, stop: Event):
+    def __init__(self, mgr: ActorRef, stop: Event, port: int):
         super().__init__()
         self.mgr = mgr
         self.stop = stop
+        self.port = port
 
     def on_start(self) -> None:
         self._q = multiprocessing.Queue()
-        self._proxy_ps = multiprocessing.Process(target=_mitmdump_wrapper, args=(self._q,))
+        self._proxy_ps = multiprocessing.Process(
+            target=_mitmdump_wrapper, args=(self._q, self.port)
+        )
         self._proxy_ps.start()
 
     def on_stop(self) -> None:
@@ -58,7 +61,7 @@ class ProxyWatcher(ThreadingActor):
         self._proxy_ps.join()
 
     def watch(self) -> None:
-        if not _check_liveness(self._proxy_ps):
+        if not _check_liveness(self._proxy_ps, self.port):
             self.mgr.tell(RuntimeError("fatal: proxy didn't go live"))
             self.stop.set()
 
@@ -97,19 +100,16 @@ def _extract_job_id(buffer: str) -> int | None:
     return None
 
 
-def _mitmdump_wrapper(q: multiprocessing.Queue) -> None:
-    sys.argv = "mitmdump --flow-detail=4".split()
+def _mitmdump_wrapper(q: multiprocessing.Queue, port: int) -> None:
+    sys.argv = f"mitmdump --flow-detail=4 --no-rawtcp -p {port}".split()
     setattr(sys.stdout, "isatty", lambda: False)
     setattr(sys.stdout, "write", q.put)
     mitmdump()
 
 
 @retries(50, 0.2)
-def _check_liveness(proxy_ps: multiprocessing.Process) -> Result[bool] | Retry:
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    res = sock.connect_ex(("127.0.0.1", 8080))
-    sock.close()
-    if res == 0:
+def _check_liveness(proxy_ps: multiprocessing.Process, port: int) -> Result[bool] | Retry:
+    if not is_port_open(port):
         return Ok(True)
     if not proxy_ps.is_alive():
         return Ok(False)
