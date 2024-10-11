@@ -91,7 +91,7 @@ class ProxyWatcher(ThreadingActor):
 def _extract_job_id(buffer: str) -> int | None:
     with suppress(Exception):
         dec = (base64.b64decode(k) for k in json.loads(buffer)["subscribe"].keys())
-        items = (str(json.loads(_[: _.index(b"}") + 1].decode())["c"]) for _ in dec)
+        items = (str(json.loads(d[: d.index(b"}") + 1].decode())["c"]) for d in dec)
         good = next(item for item in items if item.startswith("check_runs"))
         return int(good.split(":")[1])
     return None

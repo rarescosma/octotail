@@ -116,11 +116,11 @@ your setup:
   you expect the workflow to run on tags
 
 NOTE: the hook assumes you're using `zsh`. You can change the shebang to your 
-own shell, just make sure to invoke it with the right flags to get an 
+own shell, but you might want to invoke it with the right flags to get an 
 interactive, login shell. Useful to get access to custom functions and aliases.
 
 That's it! (phew) - now try pushing some commits to the `proxy` remote and check
-if you get the GitHub action logs streaming right back:
+if you get the GitHub Actions run logs streaming right back:
 
 ```shell
 cd your-original-repo

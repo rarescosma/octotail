@@ -64,7 +64,7 @@ class RunWatcher(ThreadingActor):
             self.stop.wait(2)
 
 
-@retries(5, 0.5)
+@retries(10, 0.5)
 def get_active_run(
     repo: Repository, head_sha: str, workflow_name: str
 ) -> Result[WorkflowRun] | Retry:
@@ -80,7 +80,9 @@ def get_active_run(
             log(f"try:\n\n\tgh run view {run.id} --log\n")
             log(f"or try browsing to:\n\n\t{run.url}\n")
             return RuntimeError("invalid run state")
+
         return Ok(run)
+
     return Retry()
 
 
