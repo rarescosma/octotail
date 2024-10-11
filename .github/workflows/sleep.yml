@@ -8,7 +8,7 @@ on:
 jobs:
   sleeper_one:
     name: sleeper_one
-    runs-on: arc-v0
+    runs-on: arc-octotail
     steps:
       - uses: actions/checkout@v4
       - run: |
