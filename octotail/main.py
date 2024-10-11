@@ -7,7 +7,7 @@ import sys
 from multiprocessing.synchronize import Lock as LockBase
 from pathlib import Path
 from threading import Event
-from typing import Dict, Union, cast
+from typing import Dict, Union
 
 import typer
 from github import Auth, Github
@@ -47,24 +47,24 @@ class Manager(ThreadingActor):
     def on_receive(self, msg: MgrMessage) -> None:
         debug(f"manager got message: {msg!r}")
         match msg:
-            case WorkflowJob():
-                self.browse_queue.put_nowait(VisitRequest(msg.html_url))
-                self.job_map[msg.id] = msg.name
+            case WorkflowJob() as job:
+                self.browse_queue.put_nowait(VisitRequest(job.html_url))
+                self.job_map[job.id] = job.name
 
-            case JobDone():
-                print(f"[{msg.job_name}] conclusion: {msg.conclusion}")
-                if (streamer := self.background_tasks.get(msg.job_id)) is not None:
+            case WsSub() as ws_sub:
+                if ws_sub.job_id in self.job_map:
+                    ws_sub = dataclasses.replace(ws_sub, job_name=self.job_map[ws_sub.job_id])
+                self.browse_queue.put_nowait(CloseRequest(ws_sub.job_id))
+                self.background_tasks[ws_sub.job_id] = run_streamer(ws_sub, self.output_lock)
+
+            case JobDone() as job_done:
+                print(f"[{job_done.job_name}] conclusion: {job_done.conclusion}")
+                if (streamer := self.background_tasks.get(job_done.job_id)) is not None:
                     streamer.terminate()
-                    del self.background_tasks[msg.job_id]
+                    del self.background_tasks[job_done.job_id]
 
-            case WsSub():
-                if msg.job_id in self.job_map:
-                    msg = dataclasses.replace(cast(WsSub, msg), job_name=self.job_map[msg.job_id])
-                self.browse_queue.put_nowait(CloseRequest(msg.job_id))
-                self.background_tasks[msg.job_id] = run_streamer(msg, self.output_lock)
-
-            case WorkflowDone():
-                print(f"workflow conclusion: {msg.conclusion}")
+            case WorkflowDone() as wf_done:
+                print(f"workflow conclusion: {wf_done.conclusion}")
                 self.browse_queue.put_nowait(ExitRequest())
                 self.stop.set()
 
