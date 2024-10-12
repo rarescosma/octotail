@@ -4,6 +4,7 @@
 import dataclasses
 import multiprocessing as mp
 import sys
+import threading
 from multiprocessing.synchronize import Lock as LockBase
 from pathlib import Path
 from threading import Event
@@ -16,7 +17,13 @@ from github.WorkflowRun import WorkflowRun
 from pykka import ActorRegistry, ThreadingActor
 from xdg.BaseDirectory import xdg_cache_home
 
-from octotail.browser import BrowseRequest, CloseRequest, ExitRequest, VisitRequest, run_browser
+from octotail.browser import (
+    BrowseRequest,
+    CloseRequest,
+    ExitRequest,
+    VisitRequest,
+    run_browser,
+)
 from octotail.gh import JobDone, RunWatcher, WorkflowDone, get_active_run, guess_repo
 from octotail.mitm import ProxyWatcher, WsSub
 from octotail.streamer import run_streamer
@@ -53,16 +60,14 @@ class Manager(ThreadingActor):
                 self.job_map[job.id] = job.name
 
             case WsSub() as ws_sub:
+                self.browse_queue.put_nowait(CloseRequest(ws_sub.job_id))
                 if ws_sub.job_id in self.job_map:
                     ws_sub = dataclasses.replace(ws_sub, job_name=self.job_map[ws_sub.job_id])
-                self.browse_queue.put_nowait(CloseRequest(ws_sub.job_id))
-                self.background_tasks[ws_sub.job_id] = run_streamer(ws_sub, self.output_lock)
+                self._replace_streamer(ws_sub.job_id, run_streamer(ws_sub, self.output_lock))
 
             case JobDone() as job_done:
                 print(f"[{job_done.job_name}]: conclusion: {job_done.conclusion}")
-                if (streamer := self.background_tasks.get(job_done.job_id)) is not None:
-                    streamer.terminate()
-                    del self.background_tasks[job_done.job_id]
+                self._terminate_streamer(job_done.job_id)
 
             case WorkflowDone() as wf_done:
                 print(f"[workflow]: conclusion: {wf_done.conclusion}")
@@ -74,6 +79,15 @@ class Manager(ThreadingActor):
         self.browse_queue.put_nowait(ExitRequest())
         for p in self.background_tasks.values():
             p.terminate()
+
+    def _terminate_streamer(self, job_id: int) -> None:
+        if job_id in self.background_tasks:
+            self.background_tasks[job_id].terminate()
+            del self.background_tasks[job_id]
+
+    def _replace_streamer(self, job_id: int, streamer: mp.Process) -> None:
+        self._terminate_streamer(job_id)
+        self.background_tasks[job_id] = streamer
 
 
 @cli
@@ -102,7 +116,14 @@ def main(opts: Opts) -> None:
 
     debug(f"starting on port {opts.port}")
 
-    mp.Process(target=run_browser, args=(opts, browser_inbox)).start()
+    browser = mp.Process(target=run_browser, args=(opts, browser_inbox))
+    browser.start()
+
+    def _watch_browser():
+        browser.join()
+        _stop.set()
+
+    threading.Thread(target=_watch_browser).start()
     manager = Manager.start(browser_inbox, _stop)
     run_watcher = RunWatcher.start(wf_run, manager, _stop)
     proxy_watcher = ProxyWatcher.start(manager, _stop, opts.port)

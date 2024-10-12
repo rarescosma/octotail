@@ -117,11 +117,13 @@ async def _browser(opts: Opts, inbox: mp.Queue) -> None:
     start_page = (await browser.pages())[0]
     await stealth(start_page)
 
-    if not await _nom_cookies(start_page, COOKIE_JAR):
+    if not await _nom_cookies(opts.gh_user, start_page):
         log("logging in to GitHub")
         cookies = await _login_flow(start_page, opts)
-        COOKIE_JAR.parent.mkdir(parents=True, exist_ok=True)
-        COOKIE_JAR.write_text(cookies)
+        if isinstance(cookies, RuntimeError):
+            log(f"fatal: {cookies}")
+            return await browser.close()
+        _save_user_cookies(opts.gh_user, cookies)
 
     while True:
         with suppress(Empty):
@@ -147,29 +149,36 @@ async def _browser(opts: Opts, inbox: mp.Queue) -> None:
         await aio.sleep(0.5)
 
 
-async def _login_flow(page: Page, opts: Opts) -> str:
+async def _login_flow(page: Page, opts: Opts) -> list[dict] | RuntimeError:
     await page.goto("https://github.com/login")
-    await page.waitForSelector("#login_field", timeout=30000)
 
+    await page.waitForSelector("#login_field")
     await page.type("#login_field", opts.gh_user)
     await page.keyboard.press("Tab")
+
     await page.type("#password", opts.gh_pass)
     await page.keyboard.press("Enter")
-    await page.waitForSelector("#app_totp", timeout=30000)
 
-    await page.type("#app_totp", opts.gh_otp)
-    await page.keyboard.press("Enter")
-    await page.waitForSelector(f"[data-login='{opts.gh_user}']")
+    el = await page.waitForSelector(f"#app_totp, [data-login='{opts.gh_user}']")
+    el_id = await page.evaluate("(element) => element.id", el)
+    if el_id == "app_totp":
+        if opts.gh_otp is None:
+            return RuntimeError(
+                "GitHub requested OTP authentication, but no OTP token was provided"
+            )
+        await el.type(opts.gh_otp)
+        await page.keyboard.press("Enter")
+        await page.waitForSelector(f"[data-login='{opts.gh_user}']")
 
     cookies = await page.cookies()
-    return json.dumps(cookies)
+    await page.goto("about:blank")
+    return cookies
 
 
-async def _nom_cookies(page: Page, cookie_jar: Path) -> bool:
-    if not cookie_jar.exists():
+async def _nom_cookies(user: str, page: Page) -> bool:
+    cookies = _get_user_cookies(user)
+    if cookies is None:
         return False
-
-    cookies = json.loads(cookie_jar.read_text())
 
     if any(_is_close_to_expiry(c.get("expires", "-1")) for c in cookies):
         debug("found a stale cookie :-(")
@@ -178,6 +187,21 @@ async def _nom_cookies(page: Page, cookie_jar: Path) -> bool:
     debug("all cookies are fresh, nom nom nom")
     await aio.gather(*[page.setCookie(c) for c in cookies])
     return True
+
+
+def _save_user_cookies(user: str, cookies: list[dict]) -> None:
+    COOKIE_JAR.parent.mkdir(parents=True, exist_ok=True)
+    if COOKIE_JAR.exists():
+        existing = json.loads(COOKIE_JAR.read_text())
+    else:
+        existing = {}
+    COOKIE_JAR.write_text(json.dumps({**existing, **{user: cookies}}))
+
+
+def _get_user_cookies(user: str) -> dict | None:
+    if not COOKIE_JAR.exists():
+        return None
+    return json.loads(COOKIE_JAR.read_text()).get(user)
 
 
 def _is_close_to_expiry(ts: str) -> bool:
