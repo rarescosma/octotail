@@ -77,11 +77,12 @@ Arguments:
   WORKFLOW    [required]
 
 Options:
+  --gh-pat TEXT               [env var: _GH_PAT; required]
   --gh-user TEXT              [env var: _GH_USER; required]
   --gh-pass TEXT              [env var: _GH_PASS; required]
-  --gh-otp TEXT               [env var: _GH_OTP; required]
-  --gh-pat TEXT               [env var: _GH_PAT; required]
+  --gh-otp TEXT               [env var: _GH_OTP]
   --headless / --no-headless  [env var: _HEADLESS; default: headless]
+  --port INTEGER              [env var: _PORT]
   --help                      Show this message and exit.
 ```
 
