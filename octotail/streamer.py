@@ -24,9 +24,9 @@ WS_HEADERS = {
 
 
 def run_streamer(ws_sub: WsSub, lock: LockBase) -> mp.Process:
-    p = mp.Process(target=_streamer, args=(ws_sub, lock))
-    p.start()
-    return p
+    process = mp.Process(target=_streamer, args=(ws_sub, lock))
+    process.start()
+    return process
 
 
 def _streamer(ws_sub: WsSub, lock: LockBase) -> None:
