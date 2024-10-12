@@ -31,8 +31,12 @@ type Result[T] = Ok[T] | RuntimeError | Retry
 
 def log(msg: str, stack_offset: int = 1) -> None:
     frame = inspect.stack()[stack_offset]
-    module = Path(inspect.getmodule(frame[0]).__file__).with_suffix("").name
-    print(f"[{module}:{frame.function}]: {msg}")
+    module = inspect.getmodule(frame[0])
+    if module is not None and getattr(module, "__file__") is not None:
+        module_name = Path(getattr(module, "__file__")).with_suffix("").name
+    else:
+        module_name = "?"
+    print(f"[{module_name}:{frame.function}]: {msg}")
 
 
 def debug(msg: str) -> None:
