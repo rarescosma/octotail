@@ -112,7 +112,7 @@ async def _browser(opts: Opts, inbox: mp.Queue) -> None:
     async def _visit(_visit_req: VisitRequest) -> None:
         _page = await browser.newPage()
         open_pages[_visit_req.job_id] = _page
-        await _page.goto(_visit_req.url)
+        await _page.goto(_visit_req.url, timeout=0)
 
     start_page = (await browser.pages())[0]
     await stealth(start_page)
