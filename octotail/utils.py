@@ -6,6 +6,7 @@ import random
 import socket
 import time
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Annotated, Callable, Generic, NamedTuple, TypeVar
 
 import typer
@@ -29,8 +30,9 @@ type Result[T] = Ok[T] | RuntimeError | Retry
 
 
 def log(msg: str, stack_offset: int = 1) -> None:
-    fn = inspect.stack()[stack_offset].function
-    print(f"[{fn}]: {msg}")
+    frame = inspect.stack()[stack_offset]
+    module = Path(inspect.getmodule(frame[0]).__file__).with_suffix("").name
+    print(f"[{module}:{frame.function}]: {msg}")
 
 
 def debug(msg: str) -> None:
