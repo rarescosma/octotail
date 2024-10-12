@@ -71,10 +71,10 @@ class Opts:
 
     commit_sha: str
     workflow: str
+    gh_pat: str
     gh_user: str
     gh_pass: str
-    gh_otp: str
-    gh_pat: str
+    gh_otp: str | None
     headless: bool
     port: int | None
 
@@ -84,14 +84,23 @@ def cli(main: Callable[[Opts], None]) -> Callable:
     def _inner(
         commit_sha: Annotated[str, typer.Argument(callback=_sha_callback)],
         workflow: str,
+        gh_pat: Annotated[str, typer.Option(envvar="_GH_PAT")],
         gh_user: Annotated[str, typer.Option(envvar="_GH_USER")],
         gh_pass: Annotated[str, typer.Option(envvar="_GH_PASS")],
-        gh_otp: Annotated[str, typer.Option(envvar="_GH_OTP")],
-        gh_pat: Annotated[str, typer.Option(envvar="_GH_PAT")],
+        gh_otp: Annotated[str | None, typer.Option(envvar="_GH_OTP")] = None,
         headless: Annotated[bool, typer.Option(envvar="_HEADLESS")] = True,
         port: Annotated[int | None, typer.Option(envvar="_PORT")] = None,
     ) -> None:
-        opts = Opts(commit_sha, workflow, gh_user, gh_pass, gh_otp, gh_pat, headless, port)
+        opts = Opts(
+            commit_sha=commit_sha,
+            workflow=workflow,
+            gh_pat=gh_pat,
+            gh_user=gh_user,
+            gh_pass=gh_pass,
+            gh_otp=gh_otp,
+            headless=headless,
+            port=port,
+        )
         main(opts)
 
     return _inner
