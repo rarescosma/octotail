@@ -49,9 +49,6 @@ class RunWatcher(ThreadingActor):
         while not self.stop.is_set():
             self.wf_run.update()
 
-            if self.wf_run.conclusion:
-                self.mgr.tell(WorkflowDone(self.wf_run.conclusion))
-
             with suppress(Exception):
                 for job in self.wf_run.jobs():
                     if job.conclusion and not job.id in self._concluded_jobs:
@@ -61,6 +58,10 @@ class RunWatcher(ThreadingActor):
                     if not job.id in self._new_jobs.union(self._concluded_jobs):
                         self.mgr.tell(job)
                         self._new_jobs.add(job.id)
+
+            if self.wf_run.conclusion:
+                self.mgr.tell(WorkflowDone(self.wf_run.conclusion))
+
             self.stop.wait(2)
 
 
