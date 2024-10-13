@@ -62,6 +62,7 @@ class RunWatcher(ThreadingActor):
 
             if self.wf_run.conclusion:
                 self._tell(WorkflowDone(self.wf_run.conclusion))
+                break
 
             self.stop.wait(2)
         debug("exiting")

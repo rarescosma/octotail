@@ -69,7 +69,7 @@ class ProxyWatcher(ThreadingActor):
         old_buffer: List[str] = []
         while not self._stop_event.is_set():
             with suppress(Empty):
-                line = self._q.get(timeout=2).strip()
+                line = self._q.get(timeout=1).strip()
                 if line:
                     buffer.append(line)
                 elif old_line == "" and buffer:
