@@ -5,11 +5,8 @@ import os
 import random
 import socket
 import time
-from dataclasses import dataclass
 from pathlib import Path
-from typing import Annotated, Callable, Generator, Generic, Iterable, NamedTuple, TypeVar
-
-import typer
+from typing import Callable, Generator, Generic, Iterable, NamedTuple, TypeVar
 
 DEBUG = os.getenv("DEBUG") not in ["0", "false", "False", None]
 
@@ -76,47 +73,6 @@ def retries[
     return wrapper
 
 
-@dataclass(frozen=True)
-class Opts:
-    """Holds common options."""
-
-    commit_sha: str
-    workflow: str
-    gh_pat: str
-    gh_user: str
-    gh_pass: str
-    gh_otp: str | None
-    headless: bool
-    port: int | None
-
-
-def cli(main: Callable[[Opts], None]) -> Callable:
-    # pylint: disable=R0913,R0917
-    def _inner(
-        commit_sha: Annotated[str, typer.Argument(callback=_sha_callback)],
-        workflow: str,
-        gh_pat: Annotated[str, typer.Option(envvar="_GH_PAT")],
-        gh_user: Annotated[str, typer.Option(envvar="_GH_USER")],
-        gh_pass: Annotated[str, typer.Option(envvar="_GH_PASS")],
-        gh_otp: Annotated[str | None, typer.Option(envvar="_GH_OTP")] = None,
-        headless: Annotated[bool, typer.Option(envvar="_HEADLESS")] = True,
-        port: Annotated[int | None, typer.Option(envvar="_PORT")] = None,
-    ) -> None:
-        opts = Opts(
-            commit_sha=commit_sha,
-            workflow=workflow,
-            gh_pat=gh_pat,
-            gh_user=gh_user,
-            gh_pass=gh_pass,
-            gh_otp=gh_otp,
-            headless=headless,
-            port=port,
-        )
-        main(opts)
-
-    return _inner
-
-
 def find_free_port(min_port: int = 8100, max_port: int = 8500) -> int | None:
     num_tries = 0
     random_port = random.randint(min_port, max_port)
@@ -144,11 +100,3 @@ def remove_consecutive_falsy(xs: Iterable[T]) -> Generator[T, None, None]:
         elif not yielded_empty:
             yield line
             yielded_empty = True
-
-
-def _sha_callback(value: str) -> str:
-    if len(value) != 40:
-        raise typer.BadParameter("need a full 40 character long commit sha")
-    if value == 40 * "0":
-        raise typer.BadParameter("refusing to work with the all-zero commit sha")
-    return value

@@ -18,7 +18,8 @@ from pyppeteer.page import Page
 from pyppeteer_stealth import stealth
 from xdg.BaseDirectory import xdg_cache_home
 
-from octotail.utils import Opts, debug, log
+from octotail.cli import Opts
+from octotail.utils import debug, log
 
 COOKIE_JAR = Path(xdg_cache_home) / "octotail" / "gh-cookies.json"
 RANDOM_UA = UserAgent().random

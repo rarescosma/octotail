@@ -8,7 +8,6 @@ from pathlib import Path
 from threading import Event
 from typing import Dict, Union
 
-import typer
 from github import Auth, Github
 from github.WorkflowJob import WorkflowJob
 from github.WorkflowRun import WorkflowRun
@@ -16,11 +15,12 @@ from pykka import ActorRegistry, ThreadingActor
 from xdg.BaseDirectory import xdg_cache_home
 
 from octotail.browser import BrowseRequest, BrowserWatcher, CloseRequest, ExitRequest, VisitRequest
+from octotail.cli import Opts, entrypoint
 from octotail.fmt import Formatter
 from octotail.gh import JobDone, RunWatcher, WorkflowDone, get_active_run, guess_repo
 from octotail.mitm import ProxyWatcher, WsSub
 from octotail.streamer import OutputItem, run_streamer
-from octotail.utils import Opts, cli, debug, find_free_port, log
+from octotail.utils import debug, find_free_port, log
 
 COOKIE_JAR = Path(xdg_cache_home) / "octotail" / "gh-cookies.json"
 
@@ -91,8 +91,8 @@ class Manager(ThreadingActor):
         self.background_tasks[job_id] = streamer
 
 
-@cli
-def main(opts: Opts) -> None:
+@entrypoint
+def _main(opts: Opts) -> None:
     _stop = Event()
 
     if (repo_id := guess_repo()) is None:
@@ -119,15 +119,14 @@ def main(opts: Opts) -> None:
     output_queue: mp.JoinableQueue[OutputItem | None] = mp.JoinableQueue()
     manager = Manager.start(browser_inbox, output_queue, _stop)
 
-    browser_watcher = BrowserWatcher.start(manager, opts, browser_inbox)
     run_watcher = RunWatcher.start(manager, wf_run)
+    browser_watcher = BrowserWatcher.start(manager, opts, browser_inbox)
     proxy_watcher = ProxyWatcher.start(manager, opts.port)
     formatter = Formatter.start(output_queue)
 
     try:
-        browser_watcher_future = browser_watcher.proxy().watch()
-        browser_watcher_future.join(
-            run_watcher.proxy().watch(),
+        run_watcher.proxy().watch().join(
+            browser_watcher.proxy().watch(),
             proxy_watcher.proxy().watch(),
             formatter.proxy().print_lines(),
         ).get()
@@ -135,10 +134,6 @@ def main(opts: Opts) -> None:
         _stop.set()
 
     ActorRegistry.stop_all()
-
-
-def _main() -> None:
-    typer.run(main)
 
 
 if __name__ == "__main__":
