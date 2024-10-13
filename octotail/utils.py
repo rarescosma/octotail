@@ -4,9 +4,10 @@ import inspect
 import os
 import random
 import socket
+import sys
 import time
 from pathlib import Path
-from typing import Callable, Generator, Generic, Iterable, NamedTuple, TypeVar
+from typing import Any, Callable, Generator, Generic, Iterable, NamedTuple, TypeVar
 
 DEBUG = os.getenv("DEBUG") not in ["0", "false", "False", None]
 
@@ -33,19 +34,19 @@ def flatmap(f: Callable[[A], Iterable[B]], xs: Iterable[A]) -> Iterable[B]:
     return (y for x in xs for y in f(x))
 
 
-def log(msg: str, stack_offset: int = 1) -> None:
+def log(msg: str, stack_offset: int = 1, file: Any = sys.stdout) -> None:
     frame = inspect.stack()[stack_offset]
     module = inspect.getmodule(frame[0])
     if module is not None and getattr(module, "__file__") is not None:
         module_name = Path(getattr(module, "__file__")).with_suffix("").name
     else:
         module_name = "?"
-    print(f"[{module_name}:{frame.function}]: {msg}")
+    print(f"[{module_name}:{frame.function}]: {msg}", file=file)
 
 
 def debug(msg: str) -> None:
     if DEBUG:
-        log(msg, 2)
+        log(msg, 2, file=sys.stderr)
 
 
 def retries[
