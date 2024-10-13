@@ -2,7 +2,7 @@
 
 import re
 from contextlib import suppress
-from subprocess import check_output
+from subprocess import CalledProcessError, check_output
 from threading import Event
 from typing import NamedTuple, Set
 
@@ -88,8 +88,20 @@ def get_active_run(
 
 
 def guess_repo() -> str | None:
+    try:
+        remotes = check_output(["git", "remote"]).decode().strip().splitlines()
+    except CalledProcessError as e:
+        log(f"fatal: couldn't list git remotes: {e}")
+        return None
+    repos = list(filter(None, map(_guess_repo, remotes)))
+    if len(repos) > 1:
+        log("fatal: found multiple remotes with github URLs")
+    return repos[0] if repos else None
+
+
+def _guess_repo(remote: str) -> str | None:
     with suppress(Exception):
-        origin = check_output("git remote get-url origin".split()).decode().strip()
+        origin = check_output(f"git remote get-url {remote}".split()).decode().strip()
         if (match := re.search(r"^git@github.com:([^.]+).git$", origin)) is not None:
             return match.group(1)
     return None
