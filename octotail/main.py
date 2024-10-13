@@ -17,7 +17,7 @@ from xdg.BaseDirectory import xdg_cache_home
 
 from octotail.browser import (
     BrowseRequest,
-    BrowserSupervisor,
+    BrowserWatcher,
     CloseRequest,
     ExitRequest,
     VisitRequest,
@@ -125,16 +125,21 @@ def main(opts: Opts) -> None:
     output_queue: mp.JoinableQueue[OutputItem | None] = mp.JoinableQueue()
     manager = Manager.start(browser_inbox, output_queue, _stop)
 
-    BrowserSupervisor.start(manager, opts, browser_inbox)
+    browser_watcher = BrowserWatcher.start(manager, opts, browser_inbox)
     run_watcher = RunWatcher.start(manager, wf_run)
     proxy_watcher = ProxyWatcher.start(manager, opts.port)
     formatter = Formatter.start(output_queue)
 
+    browser_watcher_future = browser_watcher.proxy().watch()
     run_watcher_future = run_watcher.proxy().watch()
     proxy_watcher_future = proxy_watcher.proxy().watch()
     formatter_future = formatter.proxy().print_lines()
     try:
-        run_watcher_future.join(proxy_watcher_future, formatter_future).get()
+        browser_watcher_future.join(
+            run_watcher_future,
+            proxy_watcher_future,
+            formatter_future,
+        ).get()
     except KeyboardInterrupt:
         _stop.set()
 

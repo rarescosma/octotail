@@ -76,7 +76,7 @@ class ExitRequest:
 type BrowseRequest = Union[VisitRequest, CloseRequest, ExitRequest]
 
 
-class BrowserSupervisor(ThreadingActor):
+class BrowserWatcher(ThreadingActor):
     """Runs the pyppeteer browser in a separate process."""
 
     opts: Opts
@@ -89,12 +89,12 @@ class BrowserSupervisor(ThreadingActor):
         self.inbox = inbox
         self.mgr = mgr
 
-    def on_start(self) -> None:
+    def watch(self) -> None:
         browser = mp.Process(target=_run_browser, args=(self.opts, self.inbox))
         browser.start()
         browser.join()
-        debug("fatal: browser exited")
-        self.mgr.stop().get()
+        debug("exiting")
+        self.mgr.stop()
 
 
 def _run_browser(opts: Opts, inbox: mp.Queue) -> None:
