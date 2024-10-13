@@ -34,7 +34,7 @@ class Manager(ThreadingActor):
     output_queue: mp.JoinableQueue
     stop_event: Event
 
-    background_tasks: Dict[int, mp.Process]
+    streamers: Dict[int, mp.Process]
     job_map: Dict[int, str]
 
     def __init__(self, browse_queue: mp.Queue, output_queue: mp.JoinableQueue, stop: Event):
@@ -43,7 +43,7 @@ class Manager(ThreadingActor):
         self.output_queue = output_queue
         self.stop_event = stop
 
-        self.background_tasks = {}
+        self.streamers = {}
         self.job_map = {}
 
     def on_receive(self, msg: MgrMessage) -> None:
@@ -78,17 +78,17 @@ class Manager(ThreadingActor):
         self.stop_event.set()
         self.output_queue.close()
         self.browse_queue.put_nowait(ExitRequest())
-        for p in self.background_tasks.values():
+        for p in self.streamers.values():
             p.terminate()
 
     def _terminate_streamer(self, job_id: int) -> None:
-        if job_id in self.background_tasks:
-            self.background_tasks[job_id].terminate()
-            del self.background_tasks[job_id]
+        if job_id in self.streamers:
+            self.streamers[job_id].terminate()
+            del self.streamers[job_id]
 
     def _replace_streamer(self, job_id: int, streamer: mp.Process) -> None:
         self._terminate_streamer(job_id)
-        self.background_tasks[job_id] = streamer
+        self.streamers[job_id] = streamer
 
 
 @entrypoint
