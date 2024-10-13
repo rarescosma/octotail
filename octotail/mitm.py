@@ -62,8 +62,8 @@ class ProxyWatcher(ThreadingActor):
 
     def watch(self) -> None:
         if not _check_liveness(self._proxy_ps, self.port):
-            self.mgr.tell(RuntimeError("fatal: proxy didn't go live"))
-            self._stop_event.set()
+            self.mgr.tell("fatal: proxy didn't go live")
+            self.mgr.stop()
 
         old_line, buffer = "-", []
         old_buffer: List[str] = []

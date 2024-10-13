@@ -94,8 +94,8 @@ class BrowserWatcher(ThreadingActor):
         browser = mp.Process(target=_run_browser, args=(self.opts, self.inbox))
         browser.start()
         browser.join()
-        debug("exiting")
         self.mgr.stop()
+        debug("exiting")
 
 
 def _run_browser(opts: Opts, inbox: mp.Queue) -> None:

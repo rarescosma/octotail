@@ -65,21 +65,18 @@ class Manager(ThreadingActor):
                 self._terminate_streamer(job.job_id)
 
             case WorkflowDone() as wf_done:
-                self.browse_queue.put_nowait(ExitRequest())
                 self.output_queue.put(
                     OutputItem("workflow", [f"##[conclusion]{wf_done.conclusion}"])
                 )
-                self.output_queue.put_nowait(None)
-                self.output_queue.join()
-                self.stop_event.set()
+                self.stop()
 
     def on_stop(self) -> None:
-        debug("manager stopping")
         self.stop_event.set()
-        self.output_queue.close()
         self.browse_queue.put_nowait(ExitRequest())
+        self.output_queue.put_nowait(None)
         for p in self.streamers.values():
             p.terminate()
+        debug("manager exiting")
 
     def _terminate_streamer(self, job_id: int) -> None:
         if job_id in self.streamers:

@@ -7,6 +7,7 @@ from threading import Event
 from typing import NamedTuple, Set
 
 from github import Repository
+from github.WorkflowJob import WorkflowJob
 from github.WorkflowRun import WorkflowRun
 from pykka import ActorRef, ThreadingActor
 
@@ -52,18 +53,22 @@ class RunWatcher(ThreadingActor):
             with suppress(Exception):
                 for job in self.wf_run.jobs():
                     if job.conclusion and not job.id in self._concluded_jobs:
-                        self.mgr.tell(JobDone(job.id, job.name, job.conclusion))
+                        self._tell(JobDone(job.id, job.name, job.conclusion))
                         self._concluded_jobs.add(job.id)
                         continue
                     if not job.id in self._new_jobs.union(self._concluded_jobs):
-                        self.mgr.tell(job)
+                        self._tell(job)
                         self._new_jobs.add(job.id)
 
             if self.wf_run.conclusion:
-                self.mgr.tell(WorkflowDone(self.wf_run.conclusion))
+                self._tell(WorkflowDone(self.wf_run.conclusion))
 
             self.stop.wait(2)
         debug("exiting")
+
+    def _tell(self, what: JobDone | WorkflowDone | WorkflowJob) -> None:
+        if self.mgr.is_alive():
+            self.mgr.tell(what)
 
 
 @retries(10, 0.5)
