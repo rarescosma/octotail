@@ -4,7 +4,7 @@ import asyncio as aio
 import json
 import multiprocessing as mp
 from contextlib import suppress
-from multiprocessing.synchronize import Lock as LockBase
+from typing import List, NamedTuple
 
 import websockets.client
 
@@ -23,22 +23,29 @@ WS_HEADERS = {
 }
 
 
-def run_streamer(ws_sub: WsSub, lock: LockBase) -> mp.Process:
-    process = mp.Process(target=_streamer, args=(ws_sub, lock))
+class OutputItem(NamedTuple):
+    """Holds an output item."""
+
+    job_name: str
+    lines: List[str]
+
+
+def run_streamer(ws_sub: WsSub, queue: mp.Queue) -> mp.Process:
+    process = mp.Process(target=_streamer, args=(ws_sub, queue))
     process.start()
     return process
 
 
-def _streamer(ws_sub: WsSub, lock: LockBase) -> None:
+def _streamer(ws_sub: WsSub, queue: mp.Queue) -> None:
     loop = aio.new_event_loop()
     aio.set_event_loop(loop)
     try:
-        loop.run_until_complete(_stream_it(ws_sub, lock))
+        loop.run_until_complete(_stream_it(ws_sub, queue))
     except KeyboardInterrupt:
         loop.close()
 
 
-async def _stream_it(ws_sub: WsSub, lock: LockBase) -> None:
+async def _stream_it(ws_sub: WsSub, queue: mp.Queue) -> None:
     ws_url = "wss://" + ws_sub.url.removeprefix("https://")
     job_name = ws_sub.job_name or "unknown"
 
@@ -46,11 +53,9 @@ async def _stream_it(ws_sub: WsSub, lock: LockBase) -> None:
         try:
             await websocket.send(ws_sub.subs)
             async for msg in websocket:
-                lines = _extract_lines(job_name, msg)
+                lines = _extract_lines(msg)
                 if lines:
-                    lock.acquire()
-                    print(lines)
-                    lock.release()
+                    queue.put(OutputItem(job_name, lines))
         except aio.CancelledError:
             log("cancelled")
             if websocket:
@@ -58,9 +63,7 @@ async def _stream_it(ws_sub: WsSub, lock: LockBase) -> None:
             return
 
 
-def _extract_lines(job_name: str, x: str) -> str:
+def _extract_lines(msg: str) -> List[str]:
     with suppress(Exception):
-        return "\n".join(
-            f"[{job_name}]: {l['line']}" for l in json.loads(x)["data"]["data"]["lines"]
-        )
-    return ""
+        return [l["line"] for l in json.loads(msg)["data"]["data"]["lines"]]
+    return []

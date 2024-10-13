@@ -7,12 +7,14 @@ import socket
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Annotated, Callable, Generic, NamedTuple, TypeVar
+from typing import Annotated, Callable, Generator, Generic, Iterable, NamedTuple, TypeVar
 
 import typer
 
 DEBUG = os.getenv("DEBUG") not in ["0", "false", "False", None]
 
+A = TypeVar("A")
+B = TypeVar("B")
 T = TypeVar("T")
 
 
@@ -27,6 +29,11 @@ class Ok(NamedTuple, Generic[T]):
 
 
 type Result[T] = Ok[T] | RuntimeError | Retry
+
+
+def flatmap(f: Callable[[A], Iterable[B]], xs: Iterable[A]) -> Iterable[B]:
+    """Map f over an iterable and flatten the result set."""
+    return (y for x in xs for y in f(x))
 
 
 def log(msg: str, stack_offset: int = 1) -> None:
@@ -126,6 +133,17 @@ def is_port_open(port: int) -> int:
     res = sock.connect_ex(("127.0.0.1", port))
     sock.close()
     return res != 0
+
+
+def remove_consecutive_falsy(xs: Iterable[T]) -> Generator[T, None, None]:
+    yielded_empty = False
+    for line in xs:
+        if line:
+            yielded_empty = False
+            yield line
+        elif not yielded_empty:
+            yield line
+            yielded_empty = True
 
 
 def _sha_callback(value: str) -> str:

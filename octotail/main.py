@@ -4,8 +4,6 @@
 import dataclasses
 import multiprocessing as mp
 import sys
-import threading
-from multiprocessing.synchronize import Lock as LockBase
 from pathlib import Path
 from threading import Event
 from typing import Dict, Union
@@ -17,10 +15,17 @@ from github.WorkflowRun import WorkflowRun
 from pykka import ActorRegistry, ThreadingActor
 from xdg.BaseDirectory import xdg_cache_home
 
-from octotail.browser import BrowseRequest, CloseRequest, ExitRequest, VisitRequest, run_browser
+from octotail.browser import (
+    BrowseRequest,
+    BrowserSupervisor,
+    CloseRequest,
+    ExitRequest,
+    VisitRequest,
+)
+from octotail.fmt import Formatter
 from octotail.gh import JobDone, RunWatcher, WorkflowDone, get_active_run, guess_repo
 from octotail.mitm import ProxyWatcher, WsSub
-from octotail.streamer import run_streamer
+from octotail.streamer import OutputItem, run_streamer
 from octotail.utils import Opts, cli, debug, find_free_port, log
 
 COOKIE_JAR = Path(xdg_cache_home) / "octotail" / "gh-cookies.json"
@@ -32,17 +37,19 @@ class Manager(ThreadingActor):
     """I'm the Baahwss."""
 
     browse_queue: mp.Queue
+    output_queue: mp.JoinableQueue
     stop_event: Event
+
     background_tasks: Dict[int, mp.Process]
-    output_lock: LockBase
     job_map: Dict[int, str]
 
-    def __init__(self, browse_queue: mp.Queue, stop: Event):
+    def __init__(self, browse_queue: mp.Queue, output_queue: mp.JoinableQueue, stop: Event):
         super().__init__()
         self.browse_queue = browse_queue
+        self.output_queue = output_queue
         self.stop_event = stop
+
         self.background_tasks = {}
-        self.output_lock = mp.Lock()
         self.job_map = {}
 
     def on_receive(self, msg: MgrMessage) -> None:
@@ -57,20 +64,25 @@ class Manager(ThreadingActor):
                 self.browse_queue.put_nowait(CloseRequest(ws_sub.job_id))
                 if ws_sub.job_id in self.job_map:
                     ws_sub = dataclasses.replace(ws_sub, job_name=self.job_map[ws_sub.job_id])
-                self._replace_streamer(ws_sub.job_id, run_streamer(ws_sub, self.output_lock))
+                self._replace_streamer(ws_sub.job_id, run_streamer(ws_sub, self.output_queue))
 
-            case JobDone() as job_done:
-                print(f"[{job_done.job_name}]: conclusion: {job_done.conclusion}")
-                self._terminate_streamer(job_done.job_id)
+            case JobDone() as job:
+                self.output_queue.put(OutputItem(job.job_name, [f"##[conclusion]{job.conclusion}"]))
+                self._terminate_streamer(job.job_id)
 
             case WorkflowDone() as wf_done:
-                print(f"[workflow]: conclusion: {wf_done.conclusion}")
                 self.browse_queue.put_nowait(ExitRequest())
+                self.output_queue.put(
+                    OutputItem("workflow", [f"##[conclusion]{wf_done.conclusion}"])
+                )
+                self.output_queue.put_nowait(None)
+                self.output_queue.join()
                 self.stop_event.set()
 
     def on_stop(self) -> None:
         debug("manager stopping")
         self.stop_event.set()
+        self.output_queue.close()
         self.browse_queue.put_nowait(ExitRequest())
         for p in self.background_tasks.values():
             p.terminate()
@@ -110,16 +122,19 @@ def main(opts: Opts) -> None:
 
     # pylint: disable=E1136
     browser_inbox: mp.Queue[BrowseRequest] = mp.Queue()
+    output_queue: mp.JoinableQueue[OutputItem | None] = mp.JoinableQueue()
     manager = Manager.start(browser_inbox, output_queue, _stop)
 
     BrowserSupervisor.start(manager, opts, browser_inbox)
     run_watcher = RunWatcher.start(manager, wf_run)
     proxy_watcher = ProxyWatcher.start(manager, opts.port)
+    formatter = Formatter.start(output_queue)
 
     run_watcher_future = run_watcher.proxy().watch()
     proxy_watcher_future = proxy_watcher.proxy().watch()
+    formatter_future = formatter.proxy().print_lines()
     try:
-        run_watcher_future.join(proxy_watcher_future).get()
+        run_watcher_future.join(proxy_watcher_future, formatter_future).get()
     except KeyboardInterrupt:
         _stop.set()
 
