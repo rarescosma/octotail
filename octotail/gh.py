@@ -80,7 +80,7 @@ def get_active_run(
         if not run.status in VALID_STATI:
             log(f"cannot process run in state: '{run.status}'")
             log(f"try:\n\n\tgh run view {run.id} --log\n")
-            log(f"or try browsing to:\n\n\t{run.url}\n")
+            log(f"or try browsing to:\n\n\t{run.html_url}\n")
             return RuntimeError("invalid run state")
 
         return Ok(run)
