@@ -15,16 +15,17 @@ browsers, you-name-it, and __octotail__ was born.
 
 ## Wait, what?!
 
-Invoked with a `commit_sha` and a `workflow_name`, it will poll the GitHub
+Invoked with a `commit_sha` and a `workflow_name`, it polls the GitHub
 API for a matching workflow run. When a job associated with the run starts,
-it'll instruct a headless chromium-based browser to visit the job's page.
+it instructs a headless chromium-based browser to visit the job's page.
 
-The browser's traffic passes through a [mitmproxy][] instance that it'll
-use to extract the authenticated WebSockets subscriptions for live tailing.
+The browser's traffic passes through a [mitmproxy][] instance that it uses 
+to extract the authenticated WebSocket subscriptions for live tailing.
 
-These are then passed to the tailing workers.
+The WebSocket address and subscribe messages are then passed to the tailing 
+workers.
 
-The headless browser tabs are cleaned up immediately after the WebSockets
+The headless browser tabs are cleaned up immediately after the WebSocket
 extraction, so the overhead is minimal. (well, it's still an empty browser)
 
 ## Prerequisites
@@ -117,7 +118,7 @@ cp post-receive.sample $PROXY_REPO/hooks/post-receive
 Edit `$PROXY_REPO/hooks/post-receive` and change things according to 
 your setup:
 
-- set `_ACTION_CAT` to the path where you actually cloned this repo
+- set `_OCTOTAIL` to the path where you actually cloned this repo
 - set `_GH_USER` to your GitHub username
 - set `_GH_PASS_CMD` to a command that outputs the GitHub password, e.g. 
   `_GH_PASS_CMD="pass github.com"`
