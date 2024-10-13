@@ -15,13 +15,7 @@ from github.WorkflowRun import WorkflowRun
 from pykka import ActorRegistry, ThreadingActor
 from xdg.BaseDirectory import xdg_cache_home
 
-from octotail.browser import (
-    BrowseRequest,
-    BrowserWatcher,
-    CloseRequest,
-    ExitRequest,
-    VisitRequest,
-)
+from octotail.browser import BrowseRequest, BrowserWatcher, CloseRequest, ExitRequest, VisitRequest
 from octotail.fmt import Formatter
 from octotail.gh import JobDone, RunWatcher, WorkflowDone, get_active_run, guess_repo
 from octotail.mitm import ProxyWatcher, WsSub
@@ -130,15 +124,12 @@ def main(opts: Opts) -> None:
     proxy_watcher = ProxyWatcher.start(manager, opts.port)
     formatter = Formatter.start(output_queue)
 
-    browser_watcher_future = browser_watcher.proxy().watch()
-    run_watcher_future = run_watcher.proxy().watch()
-    proxy_watcher_future = proxy_watcher.proxy().watch()
-    formatter_future = formatter.proxy().print_lines()
     try:
+        browser_watcher_future = browser_watcher.proxy().watch()
         browser_watcher_future.join(
-            run_watcher_future,
-            proxy_watcher_future,
-            formatter_future,
+            run_watcher.proxy().watch(),
+            proxy_watcher.proxy().watch(),
+            formatter.proxy().print_lines(),
         ).get()
     except KeyboardInterrupt:
         _stop.set()
