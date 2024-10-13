@@ -15,7 +15,7 @@ from typing import List
 from mitmproxy.tools.main import mitmdump
 from pykka import ActorRef, ThreadingActor
 
-from octotail.utils import Ok, Result, Retry, is_port_open, retries
+from octotail.utils import Ok, Result, Retry, debug, is_port_open, retries
 
 MARKERS = Namespace(
     ws_header="WebSocket text message",
@@ -38,16 +38,16 @@ class ProxyWatcher(ThreadingActor):
     """Watches for websocket subscriptions done through the mitmproxy."""
 
     mgr: ActorRef
-    stop: Event
     port: int
+    _stop_event: Event
     _proxy_ps: multiprocessing.Process
     _q: multiprocessing.Queue
 
-    def __init__(self, mgr: ActorRef, stop: Event, port: int):
+    def __init__(self, mgr: ActorRef, port: int):
         super().__init__()
         self.mgr = mgr
-        self.stop = stop
         self.port = port
+        self._stop_event = mgr.proxy().stop_event.get()
 
     def on_start(self) -> None:
         self._q = multiprocessing.Queue()
@@ -63,11 +63,11 @@ class ProxyWatcher(ThreadingActor):
     def watch(self) -> None:
         if not _check_liveness(self._proxy_ps, self.port):
             self.mgr.tell(RuntimeError("fatal: proxy didn't go live"))
-            self.stop.set()
+            self._stop_event.set()
 
         old_line, buffer = "-", []
         old_buffer: List[str] = []
-        while not self.stop.is_set():
+        while not self._stop_event.is_set():
             with suppress(Empty):
                 line = self._q.get(timeout=2).strip()
                 if line:
@@ -79,6 +79,7 @@ class ProxyWatcher(ThreadingActor):
                 else:
                     buffer.append(line)
                 old_line = line
+        debug("exiting")
 
     def _process_buffer(self, buffer: str, old_buffer: str) -> None:
         if (

@@ -10,7 +10,7 @@ from github import Repository
 from github.WorkflowRun import WorkflowRun
 from pykka import ActorRef, ThreadingActor
 
-from octotail.utils import Ok, Result, Retry, log, retries
+from octotail.utils import Ok, Result, Retry, debug, log, retries
 
 VALID_STATI = ["queued", "in_progress", "requested", "waiting", "action_required"]
 
@@ -39,11 +39,11 @@ class RunWatcher(ThreadingActor):
     _new_jobs: Set[int] = set()
     _concluded_jobs: Set[int] = set()
 
-    def __init__(self, wf_run: WorkflowRun, mgr: ActorRef, stop: Event):
+    def __init__(self, mgr: ActorRef, wf_run: WorkflowRun):
         super().__init__()
         self.wf_run = wf_run
         self.mgr = mgr
-        self.stop = stop
+        self.stop = mgr.proxy().stop_event.get()
 
     def watch(self) -> None:
         while not self.stop.is_set():
@@ -63,6 +63,7 @@ class RunWatcher(ThreadingActor):
                 self.mgr.tell(WorkflowDone(self.wf_run.conclusion))
 
             self.stop.wait(2)
+        debug("exiting")
 
 
 @retries(10, 0.5)

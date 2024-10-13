@@ -11,6 +11,7 @@ from queue import Empty
 from typing import Deque, Dict, NamedTuple, Union
 
 from fake_useragent import UserAgent
+from pykka import ActorRef, ThreadingActor
 from pyppeteer import launch
 from pyppeteer.browser import Browser
 from pyppeteer.page import Page
@@ -75,16 +76,37 @@ class ExitRequest:
 type BrowseRequest = Union[VisitRequest, CloseRequest, ExitRequest]
 
 
-def run_browser(opts: Opts, q: mp.Queue) -> None:
+class BrowserSupervisor(ThreadingActor):
+    """Runs the pyppeteer browser in a separate process."""
+
+    opts: Opts
+    inbox: mp.Queue
+    mgr: ActorRef
+
+    def __init__(self, mgr: ActorRef, opts: Opts, inbox: mp.Queue):
+        super().__init__()
+        self.opts = opts
+        self.inbox = inbox
+        self.mgr = mgr
+
+    def on_start(self) -> None:
+        browser = mp.Process(target=_run_browser, args=(self.opts, self.inbox))
+        browser.start()
+        browser.join()
+        debug("fatal: browser exited")
+        self.mgr.stop().get()
+
+
+def _run_browser(opts: Opts, inbox: mp.Queue) -> None:
     loop = aio.new_event_loop()
     aio.set_event_loop(loop)
     try:
-        loop.run_until_complete(_browser(opts, q))
+        loop.run_until_complete(_browser(opts, inbox))
     except KeyboardInterrupt:
         loop.close()
 
 
-async def launch_browser(opts: Opts) -> Browser:
+async def _launch_browser(opts: Opts) -> Browser:
     return await launch(
         headless=opts.headless,
         executablePath="/usr/bin/chromium",
@@ -97,7 +119,7 @@ async def launch_browser(opts: Opts) -> Browser:
 
 
 async def _browser(opts: Opts, inbox: mp.Queue) -> None:
-    browser = await launch_browser(opts)
+    browser = await _launch_browser(opts)
     tasks = set()
     open_pages: Dict[int, Page] = {}
     in_progress = aio.Event()

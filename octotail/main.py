@@ -32,7 +32,7 @@ class Manager(ThreadingActor):
     """I'm the Baahwss."""
 
     browse_queue: mp.Queue
-    stop: Event
+    stop_event: Event
     background_tasks: Dict[int, mp.Process]
     output_lock: LockBase
     job_map: Dict[int, str]
@@ -40,7 +40,7 @@ class Manager(ThreadingActor):
     def __init__(self, browse_queue: mp.Queue, stop: Event):
         super().__init__()
         self.browse_queue = browse_queue
-        self.stop = stop
+        self.stop_event = stop
         self.background_tasks = {}
         self.output_lock = mp.Lock()
         self.job_map = {}
@@ -66,10 +66,11 @@ class Manager(ThreadingActor):
             case WorkflowDone() as wf_done:
                 print(f"[workflow]: conclusion: {wf_done.conclusion}")
                 self.browse_queue.put_nowait(ExitRequest())
-                self.stop.set()
+                self.stop_event.set()
 
     def on_stop(self) -> None:
-        log("manager stopping")
+        debug("manager stopping")
+        self.stop_event.set()
         self.browse_queue.put_nowait(ExitRequest())
         for p in self.background_tasks.values():
             p.terminate()
@@ -97,9 +98,6 @@ def main(opts: Opts) -> None:
         log(f"could not get a matching workflow run: {wf_run}")
         sys.exit(1)
 
-    # pylint: disable=E1136
-    browser_inbox: mp.Queue[BrowseRequest] = mp.Queue()
-
     # find a free port
     if opts.port is None:
         if (port := find_free_port()) is not None:
@@ -110,17 +108,13 @@ def main(opts: Opts) -> None:
 
     debug(f"starting on port {opts.port}")
 
-    browser = mp.Process(target=run_browser, args=(opts, browser_inbox))
-    browser.start()
+    # pylint: disable=E1136
+    browser_inbox: mp.Queue[BrowseRequest] = mp.Queue()
+    manager = Manager.start(browser_inbox, output_queue, _stop)
 
-    def _watch_browser() -> None:
-        browser.join()
-        _stop.set()
-
-    threading.Thread(target=_watch_browser).start()
-    manager = Manager.start(browser_inbox, _stop)
-    run_watcher = RunWatcher.start(wf_run, manager, _stop)
-    proxy_watcher = ProxyWatcher.start(manager, _stop, opts.port)
+    BrowserSupervisor.start(manager, opts, browser_inbox)
+    run_watcher = RunWatcher.start(manager, wf_run)
+    proxy_watcher = ProxyWatcher.start(manager, opts.port)
 
     run_watcher_future = run_watcher.proxy().watch()
     proxy_watcher_future = proxy_watcher.proxy().watch()
