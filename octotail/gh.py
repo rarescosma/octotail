@@ -112,6 +112,7 @@ def guess_repo() -> str | None:
     repos = list(filter(None, map(_guess_repo, remotes)))
     if len(repos) > 1:
         log("fatal: found multiple remotes with github URLs")
+        return None
     return repos[0] if repos else None
 
 
