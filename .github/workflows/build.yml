@@ -75,6 +75,13 @@ jobs:
           source .venv/bin/activate
           poetry config repositories.test-pypi https://test.pypi.org/legacy/
           poetry publish -r test-pypi --username=__token__ --password="$TEST_PYPI_TOKEN"
+      - name: Poetry publish to pypi
+        shell: bash
+        env:
+          PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
+        run: |
+          source .venv/bin/activate
+          poetry publish --username=__token__ --password="$PYPI_TOKEN"
 
   promote-release:
     if: "github.ref == 'refs/heads/ci' && !contains(github.event.head_commit.message, '[cron]')"
