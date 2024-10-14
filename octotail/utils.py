@@ -34,19 +34,25 @@ def flatmap(f: Callable[[A], Iterable[B]], xs: Iterable[A]) -> Iterable[B]:
     return (y for x in xs for y in f(x))
 
 
-def log(msg: str, stack_offset: int = 1, file: Any = sys.stdout) -> None:
-    frame = inspect.stack()[stack_offset]
-    module = inspect.getmodule(frame[0])
-    if module is not None and getattr(module, "__file__") is not None:
-        module_name = Path(getattr(module, "__file__")).with_suffix("").name
+def log(
+    msg: str, /, stack_offset: int = 1, file: Any = sys.stdout, skip_prefix: bool = False
+) -> None:
+    if skip_prefix:
+        prefix = ""
     else:
-        module_name = "?"
-    print(f"[{module_name}:{frame.function}]: {msg}", file=file)
+        frame = inspect.stack()[stack_offset]
+        module = inspect.getmodule(frame[0])
+        if module is not None and getattr(module, "__file__") is not None:
+            module_name = Path(getattr(module, "__file__")).with_suffix("").name
+        else:
+            module_name = "?"
+        prefix = f"[{module_name}:{frame.function}]: "
+    print(f"{prefix}{msg}", file=file)
 
 
 def debug(msg: str) -> None:
     if DEBUG:
-        log(msg, 2, file=sys.stderr)
+        log(msg, stack_offset=2, file=sys.stderr)
 
 
 def retries[
