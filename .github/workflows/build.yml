@@ -1,0 +1,84 @@
+name: build
+
+on:
+  push:
+    branches:
+      - ci
+      - dev
+      - "!main"
+
+permissions:
+  contents: write
+
+jobs:
+  get-version:
+    name: get-version
+    runs-on: arc-gb
+    steps:
+      - uses: actions/checkout@v4
+      - name: Grab the version from pyproject.toml
+        shell: bash
+        run: |
+          version="v$(head -n5 pyproject.toml | grep -oE "version = \"[0-9\.]+\"" | cut -d'"' -f2)"
+          echo "VERSION=$version" >> $GITHUB_ENV
+    outputs:
+      version: ${{ env.VERSION }}
+
+  smoke-test:
+    name: smoke-test
+    runs-on: arc-gb
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        name: Setup python
+        with:
+          python-version: '3.12'
+      - name: Install test requirements
+        shell: bash
+        run: |
+          python3 -m venv .venv
+          source .venv/bin/activate
+          pip3 install -q -r requirements-dev.txt
+      - name: Run pycheck
+        shell: bash
+        run: |
+          source .venv/bin/activate
+          STRICT=1 ./hacks/pycheck octotail
+
+  build-wheels:
+    name: build-wheels
+    needs: [ "get-version", "smoke-test" ]
+    runs-on: arc-gb
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        name: Setup python
+        with:
+          python-version: '3.12'
+      - name: Install poetry
+        shell: bash
+        run: |
+          python3 -m venv .venv
+          source .venv/bin/activate
+          pip3 install -q poetry==1.8.3
+      - name: Poetry build
+        shell: bash
+        run: |
+          source .venv/bin/activate
+          poetry build
+
+  promote-release:
+    if: "github.ref == 'refs/heads/ci' && !contains(github.event.head_commit.message, '[cron]')"
+    name: promote-release
+    needs: [ "build-wheels", "get-version" ]
+    runs-on: arc-gb
+    steps:
+      - uses: actions/checkout@v4
+      - name: Promote release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          version="${{ needs.get-version.outputs.version }}"
+          gh release edit "$version" --draft=false --latest
