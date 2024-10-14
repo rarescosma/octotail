@@ -47,7 +47,7 @@ def entrypoint(main_fn: Callable[[Opts], None]) -> Callable:
 
     @wraps(main_fn)
     def wrapper() -> None:
-        app = typer.Typer(add_completion=False)
+        app = typer.Typer(add_completion=False, rich_markup_mode="rich")
         app.command(no_args_is_help=True)(Opts)
         _post_init.set(wrapped)
         app()
