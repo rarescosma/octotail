@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
 
-locat() { 
-  flock -e /tmp/pycheck.lock cat 
+ISORT_ARGS=""
+CHECK_ARG=""
+test -n "$STRICT" && {
+  set -e
+  ISORT_ARGS="--check-only --diff"
+  CHECK_ARG="--check"
 }
-export -f locat
 
 DEFAULT_CFG="${XDG_CONFIG_HOME}/pycheck/default-setup.cfg"
 
@@ -18,33 +21,26 @@ test -f pylintrc && MYPY_ARGS="--config-file=pylintrc"
 # clean & sort imports
 echo
 echo ">>>>>> pycln <<<<<<"
-pycln "${@}"
+pycln "${@}" $CHECK_ARG
 echo "-------------------"
 echo
 echo ">>>>>> isort <<<<<<"
-isort -l100 -m3 --tc "${@}"
+isort -l100 -m3 --tc "${@}" $ISORT_ARGS
 echo "-------------------"
 
 # format
 echo
 echo ">>>>>> black <<<<<<"
-black -l 100 "${@}"
+black -l 100 "${@}" $CHECK_ARG
 echo "-------------------"
 
 # types are good
-({
-    echo
-    echo ">>>>>> mypy <<<<<<<"
-    mypy "${MYPY_ARGS}" --ignore-missing-imports --disallow-untyped-defs "${@}" 
-    echo "-------------------"
-} | locat) &
+echo ">>>>>> mypy <<<<<<<"
+mypy "${MYPY_ARGS}" --ignore-missing-imports --disallow-untyped-defs "${@}"
+echo "-------------------"
 
 # messy code is bad
-({
-    echo
-    echo ">>>>>> pylint <<<<<"
-    pylint "${PYLINT_ARGS}" "${@}"
-    echo "-------------------"
-} | locat) &
-
-wait
+echo
+echo ">>>>>> pylint <<<<<"
+pylint "${PYLINT_ARGS}" "${@}"
+echo "-------------------"

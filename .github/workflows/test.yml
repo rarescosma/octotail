@@ -1,11 +1,13 @@
-name: main
+name: test
 
 on:
   push:
     branches:
-      - main
-      - dev
-      - ergonomics
+      - "main"
+      - "dev/test-yml"
+
+permissions:
+  contents: read
 
 jobs:
   pycheck:
@@ -17,7 +19,7 @@ jobs:
         name: Setup python
         with:
           python-version: '3.12'
-      - name: Install pycheck requirements
+      - name: Install test requirements
         shell: bash
         run: |
           python3 -m venv .venv
@@ -27,4 +29,4 @@ jobs:
         shell: bash
         run: |
           source .venv/bin/activate
-          ./hacks/pycheck octotail
+          STRICT=1 ./hacks/pycheck octotail
