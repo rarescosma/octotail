@@ -1,0 +1,55 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+
+permissions:
+  contents: write
+
+jobs:
+  create-release:
+    name: create-release
+    runs-on: arc-gb
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.CI_TOKEN }}
+      - name: Fetch tags
+        run: git fetch --prune --unshallow --tags --force
+      - name: Get the release version from the tag
+        if: env.VERSION == ''
+        run: echo "VERSION=${{ github.ref_name }}" >> $GITHUB_ENV
+      - name: Show the version
+        run: |
+          echo "version is: $VERSION"
+      - name: Check that tag version and pyproject.toml version are the same
+        shell: bash
+        run: |
+          version="$(echo $VERSION | sed 's/^v//')"
+          if ! grep -q "version = \"$version\"" pyproject.toml; then
+            echo "version does not match pyproject.toml" >&2
+            exit 1
+          fi
+      - name: Generate a changelog
+        uses: orhun/git-cliff-action@v4
+        id: git-cliff
+        with:
+          config: cliff.toml
+          args: --latest --strip all
+        env:
+          REPO_PREFIX: ${{ github.server_url }}/${{ github.repository }}/
+          OUTPUT: release-notes.md
+      - name: Create GitHub release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release create $VERSION --draft --verify-tag --title $VERSION -F release-notes.md
+      - name: Push to CI branch
+        env:
+          GITHUB_TOKEN: ${{ secrets.CI_TOKEN }}
+        shell: bash
+        run: |
+          git branch -D ci-temp || true
+          git checkout -b ci-temp
+          git push -u origin ci-temp:ci --force
