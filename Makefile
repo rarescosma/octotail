@@ -7,3 +7,7 @@ default: .venv/freeze
 install:
 	chmod 755 $(PWD)/octotail/main.py
 	ln -sf $(PWD)/octotail/main.py /usr/local/bin/octotail
+
+bump:
+	bumpversion patch --verbose pyproject.toml --commit --sign-tags --tag
+
