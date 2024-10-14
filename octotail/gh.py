@@ -4,13 +4,14 @@ import re
 from contextlib import suppress
 from subprocess import CalledProcessError, check_output
 from threading import Event
-from typing import NamedTuple, Set
+from typing import Callable, List, NamedTuple, Set, cast
 
 from github import Repository
 from github.WorkflowJob import WorkflowJob
 from github.WorkflowRun import WorkflowRun
 from pykka import ActorRef, ThreadingActor
 
+from octotail.cli import Opts
 from octotail.utils import Ok, Result, Retry, debug, log, retries
 
 VALID_STATI = ["queued", "in_progress", "requested", "waiting", "action_required"]
@@ -73,23 +74,31 @@ class RunWatcher(ThreadingActor):
 
 
 @retries(10, 0.5)
-def get_active_run(
-    repo: Repository, head_sha: str, workflow_name: str
-) -> Result[WorkflowRun] | Retry:
+def get_active_run(repo: Repository, opts: Opts) -> Result[WorkflowRun] | Retry:
     with suppress(Exception):
-        runs = repo.get_workflow_runs(head_sha=head_sha)
-        _runs = [r for r in runs if r.name == workflow_name]
+        runs = repo.get_workflow_runs(head_sha=opts.commit_sha)
+        if runs.totalCount == 0:
+            return Retry()
+
+        filters: List[Callable[[WorkflowRun], bool]] = [lambda wf: wf.status in VALID_STATI]
+        if opts.workflow_name:
+            filters.append(lambda wf: wf.name == cast(str, opts.workflow_name))
+        if opts.ref_name:
+            filters.append(lambda wf: cast(str, opts.ref_name).endswith(wf.head_branch))
+
+        _runs = [r for r in runs if all(f(r) for f in filters)]
         if not _runs:
             return Retry()
 
-        run = _runs[0]
-        if not run.status in VALID_STATI:
-            log(f"cannot process run in state: '{run.status}'")
-            log(f"try:\n\n\tgh run view {run.id} --log\n")
-            log(f"or try browsing to:\n\n\t{run.html_url}\n")
-            return RuntimeError("invalid run state")
+        if len(_runs) > 1:
+            log(f"found multiple active runs for commit '{opts.commit_sha}'")
+            for run in _runs:
+                log(f"\n\t{run.html_url}", skip_prefix=True)
+            log("", skip_prefix=True)
+            log("try narrowing down by workflow name (--workflow) or ref name (--ref-name)")
+            return RuntimeError("cannot disambiguate")
 
-        return Ok(run)
+        return Ok(runs[0])
 
     return Retry()
 

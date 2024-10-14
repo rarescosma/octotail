@@ -96,7 +96,7 @@ def _main(opts: Opts) -> None:
         sys.exit(1)
 
     gh_client = Github(auth=Auth.Token(opts.gh_pat))
-    wf_run = get_active_run(gh_client.get_repo(repo_id), opts.commit_sha, opts.workflow)
+    wf_run = get_active_run(gh_client.get_repo(repo_id), opts)
     if not isinstance(wf_run, WorkflowRun):
         log(f"could not get a matching workflow run: {wf_run}")
         sys.exit(1)

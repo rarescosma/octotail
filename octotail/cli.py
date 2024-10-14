@@ -18,16 +18,48 @@ def _sha_callback(value: str) -> str:
 
 @dataclass(frozen=True)
 class Opts:
-    """Holds common options."""
+    """
+    Look for an active workflow run for the given <COMMIT_SHA> (and optionally
+    --workflow-name and/or --ref-name) and attempt to tail its logs.
 
-    commit_sha: Annotated[str, typer.Argument(callback=_sha_callback)]
-    workflow: str
-    gh_pat: Annotated[str, typer.Option(envvar="_GH_PAT")]
-    gh_user: Annotated[str, typer.Option(envvar="_GH_USER")]
-    gh_pass: Annotated[str, typer.Option(envvar="_GH_PASS")]
-    gh_otp: Annotated[str | None, typer.Option(envvar="_GH_OTP")] = None
+    NOTE: the <COMMIT_SHA> has to be of the full 40 characters length.
+    """
+
+    commit_sha: Annotated[
+        str,
+        typer.Argument(callback=_sha_callback, help="Full commit SHA that triggered the workflow."),
+    ]
+    gh_pat: Annotated[
+        str,
+        typer.Option(envvar="_GH_PAT", help="GitHub personal access token.", show_default=False),
+    ]
+    gh_user: Annotated[
+        str,
+        typer.Option(envvar="_GH_USER", help="GitHub username. (for web auth)", show_default=False),
+    ]
+    gh_pass: Annotated[
+        str,
+        typer.Option(envvar="_GH_PASS", help="GitHub password. (for web auth)", show_default=False),
+    ]
+    gh_otp: Annotated[
+        str | None, typer.Option(envvar="_GH_OTP", help="GitHub OTP. (for web auth)")
+    ] = None
+    workflow_name: Annotated[
+        str | None,
+        typer.Option("-w", "--workflow", help="Look for workflows with this particular name."),
+    ] = None
+    ref_name: Annotated[
+        str | None,
+        typer.Option(
+            "-r",
+            "--ref-name",
+            help="Look for workflows triggered by this ref.\n\nExample: 'refs/heads/main'",
+        ),
+    ] = None
     headless: Annotated[bool, typer.Option(envvar="_HEADLESS")] = True
-    port: Annotated[int | None, typer.Option(envvar="_PORT")] = None
+    port: Annotated[
+        int | None, typer.Option(envvar="_PORT", show_default="random in range 8100-8500")
+    ] = None
 
     def __post_init__(self) -> None:
         _post_init.get()(self)

@@ -1,30 +1,30 @@
 #!/usr/bin/env -S zsh -li
 
-_OCTOTAIL="${HOME}/src/octotail"
-
 _GH_USER="github-user-here"
 _GH_PASS_CMD="zenity --entry --hide-text --title='GitHub' --text='Enter password:'"
 _GH_OTP_CMD="zenity --entry --hide-text --title='GitHub' --text='Enter OTP token:'"
 _GH_PAT_CMD="zenity --entry --hide-text --title='GitHub' --text='Enter PAT:'"
 
-_WORKFLOW="workflow-name-here"
-
 # add --no-force to prevent overwriting the actual remote refs
 git push origin --mirror
 
+COMMIT=""; REF_NAME=""; CNT=0
 while read old_oid new_oid ref_name; do
-  echo "old_oid: $old_oid"
-  echo "new_oid: $new_oid"
-  echo "ref_name: $ref_name"
-
-  if [[ "$ref_name" == "refs/heads/main" ]]; then
-    unset GIT_DIR
-    export PYTHONUNBUFFERED=1
-
-    export _GH_PASS="$(eval $_GH_PASS_CMD)"
-    export _GH_OTP="$(eval $_GH_OTP_CMD)"
-    export _GH_PAT="$(eval $_GH_PAT_CMD)"
-
-    "${_OCTOTAIL}/main.py" $new_oid "$_WORKFLOW" --gh-user "$_GH_USER"
-  fi
+  COMMIT="$new_oid"; REF_NAME="$ref_name"; CNT=$(( CNT + 1 ))
 done
+
+if [[ $CNT -ge 2 ]]; then
+  echo "pushed more than one ref; cannot tail"
+  exit 0
+fi
+
+echo "commit: $COMMIT"
+echo "ref_name: $REF_NAME"
+
+export PYTHONUNBUFFERED=1
+export _HEADLESS=1
+
+export _GH_PASS="$(eval $_GH_PASS_CMD)"
+export _GH_OTP="$(eval $_GH_OTP_CMD)"
+export _GH_PAT="$(eval $_GH_PAT_CMD)"
+octotail $COMMIT --ref-name $REF_NAME --gh-user "$_GH_USER"
