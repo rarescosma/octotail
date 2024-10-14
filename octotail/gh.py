@@ -54,23 +54,27 @@ class RunWatcher(ThreadingActor):
             with suppress(Exception):
                 for job in self.wf_run.jobs():
                     if job.conclusion and not job.id in self._concluded_jobs:
-                        self._tell(JobDone(job.id, job.name, job.conclusion))
+                        if not self._tell(JobDone(job.id, job.name, job.conclusion)):
+                            return
                         self._concluded_jobs.add(job.id)
                         continue
                     if not job.id in self._new_jobs.union(self._concluded_jobs):
-                        self._tell(job)
+                        if not self._tell(job):
+                            return
                         self._new_jobs.add(job.id)
 
             if self.wf_run.conclusion:
                 self._tell(WorkflowDone(self.wf_run.conclusion))
-                break
+                return
 
             self.stop.wait(2)
         debug("exiting")
 
-    def _tell(self, what: JobDone | WorkflowDone | WorkflowJob) -> None:
+    def _tell(self, what: JobDone | WorkflowDone | WorkflowJob) -> bool:
         if self.mgr.is_alive():
             self.mgr.tell(what)
+            return True
+        return False
 
 
 @retries(10, 0.5)
