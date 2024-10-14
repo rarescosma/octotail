@@ -45,8 +45,8 @@ jobs:
           source .venv/bin/activate
           STRICT=1 ./hacks/pycheck octotail
 
-  build-wheels:
-    name: build-wheels
+  publish-wheels:
+    name: publish-wheels
     needs: [ "get-version", "smoke-test" ]
     runs-on: arc-gb
     steps:
@@ -79,7 +79,7 @@ jobs:
   promote-release:
     if: "github.ref == 'refs/heads/ci' && !contains(github.event.head_commit.message, '[cron]')"
     name: promote-release
-    needs: [ "build-wheels", "get-version" ]
+    needs: [ "publish-wheels", "get-version" ]
     runs-on: arc-gb
     steps:
       - uses: actions/checkout@v4
