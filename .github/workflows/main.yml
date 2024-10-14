@@ -10,7 +10,7 @@ on:
 jobs:
   pycheck:
     name: pycheck
-    runs-on: arc-octotail
+    runs-on: arc-gb
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
