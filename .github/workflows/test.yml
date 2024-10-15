@@ -11,23 +11,34 @@ permissions:
   contents: read
 
 jobs:
-  pycheck:
-    name: pycheck
+  test:
+    name: test
     runs-on: arc-octotail
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         name: Setup python
+        id: setup-python
         with:
           python-version: '3.12'
-      - name: Install test requirements
-        shell: bash
-        run: |
-          python3 -m venv .venv
-          source .venv/bin/activate
-          pip3 install -q -r requirements-dev.txt
-      - name: Run pycheck
-        shell: bash
+      - name: Install poetry
+        uses: snok/install-poetry@v1
+        with:
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+          virtualenvs-path: .venv
+          installer-parallel: true
+      - name: Load cached venv
+        id: cached-poetry-dependencies
+        uses: actions/cache@v4
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('**/poetry.lock') }}
+      - name: Install dependencies
+        if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
+        run: poetry install --no-interaction
+      - name: Run tests
         run: |
           source .venv/bin/activate
           STRICT=1 ./hacks/pycheck octotail
+          ./hacks/update-readme --check
