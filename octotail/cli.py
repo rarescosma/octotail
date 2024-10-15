@@ -5,14 +5,23 @@ from dataclasses import dataclass
 from functools import wraps
 from typing import Annotated, Callable
 
-import typer
+from typer import Argument, BadParameter, Option, Typer
+
+_REPO_HELP = "\n".join(
+    [
+        "Use this GitHub repo to look for workflow runs.",
+        "If unspecified, will look for a remote matching 'git@github.com:<user>/<repo>.git'",
+        "in the current directory.",
+        "\nExamples: 'user/repo' OR 'org_name/repo'",
+    ]
+)
 
 
 def _sha_callback(value: str) -> str:
     if len(value) != 40:
-        raise typer.BadParameter("need a full 40 character long commit sha")
+        raise BadParameter("need a full 40 character long commit sha")
     if value == 40 * "0":
-        raise typer.BadParameter("refusing to work with the all-zero commit sha")
+        raise BadParameter("refusing to work with the all-zero commit sha")
     return value
 
 
@@ -20,45 +29,59 @@ def _sha_callback(value: str) -> str:
 class Opts:
     """
     Look for an active workflow run for the given <COMMIT_SHA> (and optionally
-    --workflow-name and/or --ref-name) and attempt to tail its logs.
+    --workflow and/or --ref-name) and attempt to tail its logs.
 
     NOTE: the <COMMIT_SHA> has to be of the full 40 characters length.
     """
 
     commit_sha: Annotated[
         str,
-        typer.Argument(callback=_sha_callback, help="Full commit SHA that triggered the workflow."),
+        Argument(callback=_sha_callback, help="Full commit SHA that triggered the workflow."),
     ]
     gh_pat: Annotated[
         str,
-        typer.Option(envvar="_GH_PAT", help="GitHub personal access token.", show_default=False),
+        Option(
+            envvar="_GH_PAT",
+            help="GitHub personal access token. (for API auth)",
+            show_default=False,
+        ),
     ]
     gh_user: Annotated[
         str,
-        typer.Option(envvar="_GH_USER", help="GitHub username. (for web auth)", show_default=False),
+        Option(envvar="_GH_USER", help="GitHub username. (for web auth)", show_default=False),
     ]
     gh_pass: Annotated[
         str,
-        typer.Option(envvar="_GH_PASS", help="GitHub password. (for web auth)", show_default=False),
+        Option(envvar="_GH_PASS", help="GitHub password. (for web auth)", show_default=False),
     ]
-    gh_otp: Annotated[
-        str | None, typer.Option(envvar="_GH_OTP", help="GitHub OTP. (for web auth)")
-    ] = None
+    gh_otp: Annotated[str | None, Option(envvar="_GH_OTP", help="GitHub OTP. (for web auth)")] = (
+        None
+    )
     workflow_name: Annotated[
         str | None,
-        typer.Option("-w", "--workflow", help="Look for workflows with this particular name."),
+        Option(
+            "-w",
+            "--workflow",
+            help="Only consider workflows with this name.",
+            show_default=False,
+        ),
     ] = None
     ref_name: Annotated[
         str | None,
-        typer.Option(
+        Option(
             "-r",
             "--ref-name",
-            help="Look for workflows triggered by this ref.\n\nExample: 'refs/heads/main'",
+            help="Only consider workflows triggered by this ref.\n\nExample: 'refs/heads/main'",
+            show_default=False,
         ),
     ] = None
-    headless: Annotated[bool, typer.Option(envvar="_HEADLESS")] = True
+    repo: Annotated[
+        str | None,
+        Option("-R", "--repo", help=_REPO_HELP, show_default=False),
+    ] = None
+    headless: Annotated[bool, Option(envvar="_HEADLESS")] = True
     port: Annotated[
-        int | None, typer.Option(envvar="_PORT", show_default="random in range 8100-8500")
+        int | None, Option(envvar="_PORT", show_default="random in range 8100-8500")
     ] = None
 
     def __post_init__(self) -> None:
@@ -79,7 +102,7 @@ def entrypoint(main_fn: Callable[[Opts], None]) -> Callable:
 
     @wraps(main_fn)
     def wrapper() -> None:
-        app = typer.Typer(add_completion=False, rich_markup_mode="rich")
+        app = Typer(add_completion=False, rich_markup_mode="rich")
         app.command(no_args_is_help=True)(Opts)
         _post_init.set(wrapped)
         app()

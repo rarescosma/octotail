@@ -92,7 +92,8 @@ class Manager(ThreadingActor):
 def _main(opts: Opts) -> None:
     _stop = Event()
 
-    if (repo_id := guess_repo()) is None:
+    if (repo_id := (opts.repo or guess_repo())) is None:
+        log("could not establish repo")
         sys.exit(1)
 
     gh_client = Github(auth=Auth.Token(opts.gh_pat))
