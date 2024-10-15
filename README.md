@@ -79,7 +79,7 @@ Make a virtual environment, activate it, and install the package.
 python3 -m venv .venv
 source .venv/bin/activate
 poetry install --no-dev
-sudo ln -sf $(pwd)/octotail/main.py /usr/local/bin
+sudo ln -sf $(pwd)/octotail/main.py /usr/local/bin/octotail
 ```
 
 ### __Important:__ post-install
