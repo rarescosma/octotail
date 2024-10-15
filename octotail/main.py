@@ -46,10 +46,10 @@ class Manager(ThreadingActor):
         self.streamers = {}
         self.job_map = {}
 
-    def on_receive(self, msg: MgrMessage) -> None:
-        debug(f"manager got message: {msg!r}")
+    def on_receive(self, message: MgrMessage) -> None:
+        debug(f"manager got message: {message!r}")
 
-        match msg:
+        match message:
             case WorkflowJob() as job:
                 self.browse_queue.put_nowait(VisitRequest(job.html_url, job.id))
                 self.job_map[job.id] = job.name

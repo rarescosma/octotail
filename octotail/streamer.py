@@ -63,7 +63,8 @@ async def _stream_it(ws_sub: WsSub, queue: mp.Queue) -> None:
             return
 
 
-def _extract_lines(msg: str) -> List[str]:
+def _extract_lines(msg: str | bytes) -> List[str]:
+    _msg = msg.decode() if isinstance(msg, bytes) else msg
     with suppress(Exception):
-        return [l["line"] for l in json.loads(msg)["data"]["data"]["lines"]]
+        return [l["line"] for l in json.loads(_msg)["data"]["data"]["lines"]]
     return []

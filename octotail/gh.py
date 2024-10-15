@@ -6,7 +6,7 @@ from subprocess import CalledProcessError, check_output
 from threading import Event
 from typing import Callable, List, NamedTuple, Set, cast
 
-from github import Repository
+from github.Repository import Repository
 from github.WorkflowJob import WorkflowJob
 from github.WorkflowRun import WorkflowRun
 from pykka import ActorRef, ThreadingActor
@@ -36,7 +36,7 @@ class RunWatcher(ThreadingActor):
 
     wf_run: WorkflowRun
     mgr: ActorRef
-    stop: Event
+    stop_event: Event
 
     _new_jobs: Set[int] = set()
     _concluded_jobs: Set[int] = set()
@@ -45,10 +45,10 @@ class RunWatcher(ThreadingActor):
         super().__init__()
         self.wf_run = wf_run
         self.mgr = mgr
-        self.stop = mgr.proxy().stop_event.get()
+        self.stop_event = mgr.proxy().stop_event.get()
 
     def watch(self) -> None:
-        while not self.stop.is_set():
+        while not self.stop_event.is_set():
             self.wf_run.update()
 
             with suppress(Exception):
@@ -67,7 +67,7 @@ class RunWatcher(ThreadingActor):
                 self._tell(WorkflowDone(self.wf_run.conclusion))
                 return
 
-            self.stop.wait(2)
+            self.stop_event.wait(2)
         debug("exiting")
 
     def _tell(self, what: JobDone | WorkflowDone | WorkflowJob) -> bool:
