@@ -10,4 +10,3 @@ install:
 
 bump:
 	bumpversion patch --verbose pyproject.toml --commit --sign-tags --tag
-
