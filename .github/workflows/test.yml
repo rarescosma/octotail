@@ -5,6 +5,7 @@ on:
     branches:
       - "main"
       - "dev/test-yml"
+      - "feature/*"
 
 permissions:
   contents: read
