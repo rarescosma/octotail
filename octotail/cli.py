@@ -1,5 +1,6 @@
 """ Options class + some magic so we can define our args in one place only. """
 
+import re
 from contextvars import ContextVar
 from dataclasses import dataclass
 from functools import wraps
@@ -22,6 +23,13 @@ def _sha_callback(value: str) -> str:
         raise BadParameter("need a full 40 character long commit sha")
     if value == 40 * "0":
         raise BadParameter("refusing to work with the all-zero commit sha")
+    return value
+
+
+def _repo_callback(value: str | None) -> str | None:
+    pattern = r"^[a-zA-Z0-9_-]{1,100}/[a-zA-Z0-9_-]{1,100}$"
+    if value is not None and re.match(pattern, value) is None:
+        raise BadParameter(f"invalid format for repo: {value}")
     return value
 
 
@@ -77,7 +85,13 @@ class Opts:
     ] = None
     repo: Annotated[
         str | None,
-        Option("-R", "--repo", help=_REPO_HELP, show_default=False),
+        Option(
+            "-R",
+            "--repo",
+            help=_REPO_HELP,
+            show_default=False,
+            callback=_repo_callback,
+        ),
     ] = None
     headless: Annotated[bool, Option(envvar="_HEADLESS")] = True
     port: Annotated[
