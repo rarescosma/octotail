@@ -98,12 +98,12 @@ def is_port_open(port: int) -> int:
     return res != 0
 
 
-def remove_consecutive_falsy(xs: Iterable[T]) -> Generator[T, None, None]:
+def remove_consecutive_falsy(items: Iterable[T]) -> Generator[T, None, None]:
     yielded_empty = False
-    for line in xs:
-        if line:
+    for item in items:
+        if item:
             yielded_empty = False
-            yield line
+            yield item
         elif not yielded_empty:
-            yield line
+            yield item
             yielded_empty = True

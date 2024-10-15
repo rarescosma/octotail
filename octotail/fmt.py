@@ -29,22 +29,22 @@ class Formatter(ThreadingActor):
 
     queue: mp.JoinableQueue
     _wheel_idx: int
-    _job_map: Dict[str, int]
+    _color_map: Dict[str, int]
 
     def __init__(self, queue: mp.JoinableQueue):
         super().__init__()
         self.queue = queue
         self._wheel_idx = 0
-        self._job_map = {}
+        self._color_map = {}
 
-    def _get_color(self, job_name: str) -> Color:
-        if job_name == "workflow":
+    def _get_color(self, group: str) -> Color:
+        if group == "workflow":
             return "white"
 
-        if job_name not in self._job_map:
-            self._job_map[job_name] = self._wheel_idx
+        if group not in self._color_map:
+            self._color_map[group] = self._wheel_idx
             self._wheel_idx = (self._wheel_idx + 1) % len(WHEEL)
-        return WHEEL[self._job_map[job_name]]
+        return WHEEL[self._color_map[group]]
 
     def print_lines(self) -> None:
         while True:

@@ -100,7 +100,7 @@ sudo trust anchor ~/.mitmproxy/mitmproxy-ca-cert.cer
 
  Usage: octotail [OPTIONS] COMMIT_SHA
 
- Look for an active workflow run for the given <COMMIT_SHA> (and optionally --workflow and/or
+ Find an active workflow run for the given <COMMIT_SHA> (and optionally --workflow and/or
  --ref-name) and attempt to tail its logs.
  NOTE: the <COMMIT_SHA> has to be of the full 40 characters length.
 

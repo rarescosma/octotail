@@ -74,8 +74,8 @@ class Manager(ThreadingActor):
         self.stop_event.set()
         self.browse_queue.put_nowait(ExitRequest())
         self.output_queue.put_nowait(None)
-        for p in self.streamers.values():
-            p.terminate()
+        for streamer in self.streamers.values():
+            streamer.terminate()
         debug("manager exiting")
 
     def _terminate_streamer(self, job_id: int) -> None:

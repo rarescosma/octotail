@@ -15,6 +15,7 @@ from octotail.cli import Opts
 from octotail.utils import Ok, Result, Retry, debug, log, retries
 
 VALID_STATI = ["queued", "in_progress", "requested", "waiting", "action_required"]
+POLL_INTERVAL = 2
 
 
 class WorkflowDone(NamedTuple):
@@ -34,8 +35,8 @@ class JobDone(NamedTuple):
 class RunWatcher(ThreadingActor):
     """Watches for changes in a GitHub Actions run."""
 
-    wf_run: WorkflowRun
     mgr: ActorRef
+    wf_run: WorkflowRun
     stop_event: Event
 
     _new_jobs: Set[int] = set()
@@ -43,8 +44,8 @@ class RunWatcher(ThreadingActor):
 
     def __init__(self, mgr: ActorRef, wf_run: WorkflowRun):
         super().__init__()
-        self.wf_run = wf_run
         self.mgr = mgr
+        self.wf_run = wf_run
         self.stop_event = mgr.proxy().stop_event.get()
 
     def watch(self) -> None:
@@ -67,7 +68,7 @@ class RunWatcher(ThreadingActor):
                 self._tell(WorkflowDone(self.wf_run.conclusion))
                 return
 
-            self.stop_event.wait(2)
+            self.stop_event.wait(POLL_INTERVAL)
         debug("exiting")
 
     def _tell(self, what: JobDone | WorkflowDone | WorkflowJob) -> bool:
