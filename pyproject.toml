@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "octotail"
-version = "1.0.6"
+version = "1.0.7"
 description = "Live tail GitHub Actions runs on git push"
 authors = ["Rareș Cosma <rares@getbetter.ro>"]
 license = "UNLICENSE"
