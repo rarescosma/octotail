@@ -138,21 +138,28 @@ git push origin main
 octotail $(git rev-parse origin/main) -r refs/heads/main
 ```
 
-Or if you're pushing a tag:
+Or if pushing a tag:
 
 ```shell
 git push origin v1.0.42
 octotail $(git rev-parse v1.0.42^{commit}) -r refs/tags/v1.0.42
 ```
 
+Or if simply pushing the `HEAD` of the current branch:
+
+```shell
+git push
+octotail $(git rev-parse HEAD)
+```
+
 ### As a post-receive hook
 
-A slightly more advanced use case that lets you stream the run outputs on
-`git push`, similar to how you get the test runs results when pushing
-to [Codecrafters][].
+A slightly more advanced use case that allows streaming the run outputs on
+`git push` without invoking `octotail` explicitly, similar to [Codecrafters][]
+test runs.
 
 For this to work we'll need control over the remote's output, so we can't use
-the GitHub remote directly. Instead, we'll use a bare repository as our "proxy"
+the GitHub remote directly. Instead, we'll use a bare repository as our `proxy`
 remote and set up its post-receive hook to call `octotail`.
 
 ```shell
@@ -179,12 +186,12 @@ your setup:
 - set `_GH_PAT_CMD` to a command that outputs your GitHub personal access token,
   e.g. `_GH_PAT_CMD="pass github_pat"`
 
-NOTE: the hook assumes you're using `zsh`. You can change the shebang to your 
-own shell, but you might want to invoke it with the right flags to get an 
+**NOTE:** the hook assumes one is using `zsh`. The shebang can be changed to 
+any other shell, but it's best to invoke it with the right flags to get an 
 interactive, login shell. Useful to get access to custom functions and aliases.
 
-That's it! (phew) - now try pushing some commits to the `proxy` remote and check
-if you get the GitHub Actions run logs streaming right back:
+That's it! (phew) - now try pushing to the `proxy` remote and check
+if the GitHub Actions workflow run logs are streaming right back:
 
 ```shell
 cd your-original-repo
