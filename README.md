@@ -97,10 +97,10 @@ sudo trust anchor ~/.mitmproxy/mitmproxy-ca-cert.cer
 
 ```
 # octotail --help
-                                                                                                    
+
  Usage: octotail [OPTIONS] COMMIT_SHA                                                               
                                                                                                     
- Look for an active workflow run for the given <COMMIT_SHA> (and optionally --workflow-name and/or  
+ Look for an active workflow run for the given <COMMIT_SHA> (and optionally --workflow and/or       
  --ref-name) and attempt to tail its logs.                                                          
  NOTE: the <COMMIT_SHA> has to be of the full 40 characters length.                                 
                                                                                                     
@@ -109,7 +109,8 @@ sudo trust anchor ~/.mitmproxy/mitmproxy-ca-cert.cer
 │                            [required]                                                            │
 ╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Options ────────────────────────────────────────────────────────────────────────────────────────╮
-│ *  --gh-pat                         TEXT     GitHub personal access token. [env var: _GH_PAT]    │
+│ *  --gh-pat                         TEXT     GitHub personal access token. (for API auth)        │
+│                                              [env var: _GH_PAT]                                  │
 │                                              [required]                                          │
 │ *  --gh-user                        TEXT     GitHub username. (for web auth) [env var: _GH_USER] │
 │                                              [required]                                          │
@@ -117,11 +118,14 @@ sudo trust anchor ~/.mitmproxy/mitmproxy-ca-cert.cer
 │                                              [required]                                          │
 │    --gh-otp                         TEXT     GitHub OTP. (for web auth) [env var: _GH_OTP]       │
 │                                              [default: None]                                     │
-│    --workflow  -w                   TEXT     Look for workflows with this particular name.       │
-│                                              [default: None]                                     │
-│    --ref-name  -r                   TEXT     Look for workflows triggered by this ref.           │
+│    --workflow  -w                   TEXT     Only consider workflows with this name.             │
+│    --ref-name  -r                   TEXT     Only consider workflows triggered by this ref.      │
 │                                              Example: 'refs/heads/main'                          │
-│                                              [default: None]                                     │
+│    --repo      -R                   TEXT     Use this GitHub repo to look for workflow runs. If  │
+│                                              unspecified, will look for a remote matching        │
+│                                              'git@github.com:<user>/<repo>.git' in the current   │
+│                                              directory.                                          │
+│                                              Examples: 'user/repo' OR 'org_name/repo'            │
 │    --headless      --no-headless             [env var: _HEADLESS] [default: headless]            │
 │    --port                           INTEGER  [env var: _PORT]                                    │
 │                                              [default: (random in range 8100-8500)]              │
