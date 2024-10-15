@@ -44,6 +44,17 @@ If unsure, and on Arch:
 paru ungoogled-chromium-bin
 ```
 
+### Pypi package
+
+```shell
+mkdir octotail && cd octotail
+python3 -mvenv .venv && source .venv/bin/activate
+pip3 install octotail
+
+# or .bashrc, config.fish, etc.
+echo "alias octotail='$(pwd)/.venv/bin/python3 $(pwd)/.venv/bin/octotail'" >> ~/.zshrc
+```
+
 ### Via git and make
 
 ```shell
