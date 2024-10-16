@@ -8,15 +8,18 @@ import sys
 from argparse import Namespace
 from contextlib import suppress
 from dataclasses import dataclass
+from pathlib import Path
 from queue import Empty
 from threading import Event
 from typing import List
 
 from mitmproxy.tools.main import mitmdump
 from pykka import ActorRef, ThreadingActor
+from xdg.BaseDirectory import xdg_data_home
 
 from octotail.utils import Ok, Result, Retry, debug, is_port_open, retries
 
+MITM_CONFIG_DIR = Path(xdg_data_home) / "octotail" / "mitmproxy"
 MARKERS = Namespace(
     ws_header="WebSocket text message",
     ws_host="alive.github.com",
@@ -102,7 +105,9 @@ def _extract_job_id(buffer: str) -> int | None:
 
 
 def _mitmdump_wrapper(q: multiprocessing.Queue, port: int) -> None:
-    sys.argv = f"mitmdump --flow-detail=4 --no-rawtcp -p {port}".split()
+    sys.argv = (
+        f"mitmdump --flow-detail=4 --no-rawtcp -p {port} --set confdir={MITM_CONFIG_DIR}".split()
+    )
     setattr(sys.stdout, "isatty", lambda: False)
     setattr(sys.stdout, "write", q.put)
     mitmdump()
