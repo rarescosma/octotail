@@ -1,10 +1,10 @@
 """GitHub actor."""
 
 import re
+import typing as t
 from contextlib import suppress
 from subprocess import CalledProcessError, check_output
 from threading import Event
-from typing import Callable, List, NamedTuple, Set, cast
 
 from github.Repository import Repository
 from github.WorkflowJob import WorkflowJob
@@ -18,13 +18,13 @@ VALID_STATI = ["queued", "in_progress", "requested", "waiting", "action_required
 POLL_INTERVAL = 2
 
 
-class WorkflowDone(NamedTuple):
+class WorkflowDone(t.NamedTuple):
     """Workflow done message."""
 
     conclusion: str
 
 
-class JobDone(NamedTuple):
+class JobDone(t.NamedTuple):
     """Job done message."""
 
     job_id: int
@@ -39,8 +39,8 @@ class RunWatcher(ThreadingActor):
     wf_run: WorkflowRun
     stop_event: Event
 
-    _new_jobs: Set[int] = set()
-    _concluded_jobs: Set[int] = set()
+    _new_jobs: t.Set[int] = set()
+    _concluded_jobs: t.Set[int] = set()
 
     def __init__(self, mgr: ActorRef, wf_run: WorkflowRun):
         super().__init__()
@@ -85,11 +85,11 @@ def get_active_run(repo: Repository, opts: Opts) -> Result[WorkflowRun] | Retry:
         if runs.totalCount == 0:
             return Retry()
 
-        filters: List[Callable[[WorkflowRun], bool]] = [lambda wf: wf.status in VALID_STATI]
+        filters: t.List[t.Callable[[WorkflowRun], bool]] = [lambda wf: wf.status in VALID_STATI]
         if opts.workflow_name:
-            filters.append(lambda wf: wf.name == cast(str, opts.workflow_name))
+            filters.append(lambda wf: wf.name == t.cast(str, opts.workflow_name))
         if opts.ref_name:
-            filters.append(lambda wf: cast(str, opts.ref_name).endswith(wf.head_branch))
+            filters.append(lambda wf: t.cast(str, opts.ref_name).endswith(wf.head_branch))
 
         _runs = [r for r in runs if all(f(r) for f in filters)]
         if not _runs:

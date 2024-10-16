@@ -2,10 +2,10 @@
 
 import os
 import re
+import typing as t
 from contextvars import ContextVar
 from dataclasses import dataclass
 from functools import wraps
-from typing import Annotated, Any, Callable
 from unittest.mock import patch
 
 from rich.box import Box
@@ -50,7 +50,7 @@ class Opts:
     _NOTE:_ the `COMMIT_SHA` has to be of the full 40 characters length.
     """
 
-    commit_sha: Annotated[
+    commit_sha: t.Annotated[
         str,
         Argument(
             callback=_sha_callback,
@@ -58,7 +58,7 @@ class Opts:
             show_default=False,
         ),
     ]
-    gh_pat: Annotated[
+    gh_pat: t.Annotated[
         str,
         Option(
             envvar="_GH_PAT",
@@ -67,7 +67,7 @@ class Opts:
             rich_help_panel="Authentication",
         ),
     ]
-    gh_user: Annotated[
+    gh_user: t.Annotated[
         str,
         Option(
             envvar="_GH_USER",
@@ -76,7 +76,7 @@ class Opts:
             rich_help_panel="Authentication",
         ),
     ]
-    gh_pass: Annotated[
+    gh_pass: t.Annotated[
         str,
         Option(
             envvar="_GH_PASS",
@@ -85,7 +85,7 @@ class Opts:
             rich_help_panel="Authentication",
         ),
     ]
-    gh_otp: Annotated[
+    gh_otp: t.Annotated[
         str | None,
         Option(
             envvar="_GH_OTP",
@@ -93,7 +93,7 @@ class Opts:
             rich_help_panel="Authentication",
         ),
     ] = None
-    workflow_name: Annotated[
+    workflow_name: t.Annotated[
         str | None,
         Option(
             "-w",
@@ -103,7 +103,7 @@ class Opts:
             rich_help_panel="Workflow filters",
         ),
     ] = None
-    ref_name: Annotated[
+    ref_name: t.Annotated[
         str | None,
         Option(
             "-r",
@@ -113,7 +113,7 @@ class Opts:
             rich_help_panel="Workflow filters",
         ),
     ] = None
-    repo: Annotated[
+    repo: t.Annotated[
         str | None,
         Option(
             "-R",
@@ -125,11 +125,11 @@ class Opts:
             metavar="USER/REPO",
         ),
     ] = None
-    headless: Annotated[
+    headless: t.Annotated[
         bool,
         Option(envvar="_HEADLESS", help="Run browser in headless mode.", rich_help_panel="Others"),
     ] = True
-    port: Annotated[
+    port: t.Annotated[
         int | None,
         Option(
             envvar="_PORT",
@@ -147,18 +147,18 @@ def _noop(_: Opts) -> None:
     pass
 
 
-_post_init: ContextVar[Callable[[Opts], None]] = ContextVar("post_init", default=_noop)
+_post_init: ContextVar[t.Callable[[Opts], None]] = ContextVar("post_init", default=_noop)
 
 
 class _HelpIsLast(TyperCommand):
-    def get_help_option(self, ctx: Any) -> Any:
+    def get_help_option(self, ctx: t.Any) -> t.Any:
         """Use of 'Any' is unavoidable here if we don't want click as an explicit dependency."""
         help_option = super().get_help_option(ctx)
         setattr(help_option, "rich_help_panel", "Others")
         return help_option
 
 
-def entrypoint(main_fn: Callable[[Opts], None]) -> Callable:
+def entrypoint(main_fn: t.Callable[[Opts], None]) -> t.Callable:
     def wrapped(opts: Opts) -> None:
         _post_init.set(_noop)
         main_fn(opts)

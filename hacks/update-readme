@@ -6,15 +6,15 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
-from typing import List, NamedTuple
+import typing as t
 
 from ptyprocess import PtyProcessUnicode
 
 
-class Help(NamedTuple):
+class Help(t.NamedTuple):
     """Just a struct."""
 
-    text: List[str]
+    text: t.List[str]
     start_index: int
     end_index: int
 
@@ -35,7 +35,7 @@ def _get_readme_help(readme: str) -> Help:
     return Help(_help, start_index, end_index)
 
 
-def _get_actual_help(cmd: List[str]) -> List[str]:
+def _get_actual_help(cmd: t.List[str]) -> t.List[str]:
     p = PtyProcessUnicode.spawn(cmd, dimensions=(100, 100), env={**os.environ, "NO_COLOR": "1"})
     ansi_escape = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
     script_output = []

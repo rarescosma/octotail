@@ -5,9 +5,9 @@ import dataclasses
 import multiprocessing as mp
 import sys
 import time
+import typing as t
 from pathlib import Path
 from threading import Event
-from typing import Dict, Union
 
 from github import Auth, Github
 from github.WorkflowJob import WorkflowJob
@@ -25,7 +25,7 @@ from octotail.utils import debug, find_free_port, log
 
 COOKIE_JAR = Path(xdg_cache_home) / "octotail" / "gh-cookies.json"
 
-type MgrMessage = Union[WorkflowJob, WsSub, JobDone, WorkflowDone]
+type MgrMessage = t.Union[WorkflowJob, WsSub, JobDone, WorkflowDone]
 
 
 class Manager(ThreadingActor):
@@ -35,8 +35,8 @@ class Manager(ThreadingActor):
     output_queue: mp.JoinableQueue
     stop_event: Event
 
-    streamers: Dict[int, mp.Process]
-    job_map: Dict[int, str]
+    streamers: t.Dict[int, mp.Process]
+    job_map: t.Dict[int, str]
 
     def __init__(self, browse_queue: mp.Queue, output_queue: mp.JoinableQueue, stop: Event):
         super().__init__()

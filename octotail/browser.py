@@ -4,11 +4,11 @@ import asyncio as aio
 import json
 import multiprocessing as mp
 import time
+import typing as t
 from collections import deque
 from contextlib import suppress
 from pathlib import Path
 from queue import Empty
-from typing import Deque, Dict, NamedTuple, Union
 
 from fake_useragent import UserAgent
 from pykka import ActorRef, ThreadingActor
@@ -57,14 +57,14 @@ CHROME_ARGS = [
 ]
 
 
-class VisitRequest(NamedTuple):
+class VisitRequest(t.NamedTuple):
     """Visit request message."""
 
     url: str
     job_id: int
 
 
-class CloseRequest(NamedTuple):
+class CloseRequest(t.NamedTuple):
     """Close request message."""
 
     job_id: int
@@ -74,7 +74,7 @@ class ExitRequest:
     """Exit request message."""
 
 
-type BrowseRequest = Union[VisitRequest, CloseRequest, ExitRequest]
+type BrowseRequest = t.Union[VisitRequest, CloseRequest, ExitRequest]
 
 
 class BrowserWatcher(ThreadingActor):
@@ -122,9 +122,9 @@ async def _launch_browser(opts: Opts) -> Browser:
 async def _browser(opts: Opts, inbox: mp.Queue) -> None:
     browser = await _launch_browser(opts)
     tasks = set()
-    open_pages: Dict[int, Page] = {}
+    open_pages: t.Dict[int, Page] = {}
     in_progress = aio.Event()
-    visit_queue: Deque[VisitRequest] = deque()
+    visit_queue: t.Deque[VisitRequest] = deque()
 
     def _schedule_visit(_visit_req: VisitRequest) -> None:
         in_progress.set()

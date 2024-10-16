@@ -5,13 +5,13 @@ import copy
 import json
 import multiprocessing
 import sys
+import typing as t
 from argparse import Namespace
 from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path
 from queue import Empty
 from threading import Event
-from typing import List
 
 from mitmproxy.tools.main import mitmdump
 from pykka import ActorRef, ThreadingActor
@@ -71,7 +71,7 @@ class ProxyWatcher(ThreadingActor):
             self.mgr.stop()
 
         old_line, buffer = "-", []
-        old_buffer: List[str] = []
+        old_buffer: t.List[str] = []
         while not self._stop_event.is_set():
             with suppress(Empty):
                 line = self._q.get(timeout=1).strip()

@@ -3,10 +3,10 @@ Routines for pretty formatting the output.
 """
 
 import multiprocessing as mp
+import typing as t
 from contextlib import suppress
 from functools import partial
 from queue import Empty
-from typing import Callable, Dict, Generator, List
 
 from pykka import ThreadingActor
 from termcolor import colored
@@ -15,7 +15,7 @@ from termcolor._types import Color
 from octotail.streamer import OutputItem
 from octotail.utils import debug, flatmap, remove_consecutive_falsy
 
-WHEEL: List[Color] = [
+WHEEL: t.List[Color] = [
     "light_green",
     "light_yellow",
     "light_blue",
@@ -29,7 +29,7 @@ class Formatter(ThreadingActor):
 
     queue: mp.JoinableQueue
     _wheel_idx: int
-    _color_map: Dict[str, int]
+    _color_map: t.Dict[str, int]
 
     def __init__(self, queue: mp.JoinableQueue):
         super().__init__()
@@ -57,7 +57,7 @@ class Formatter(ThreadingActor):
                 print("\n".join(self._handle_item(item)))
         debug("exiting")
 
-    def _handle_item(self, item: OutputItem) -> Generator[str, None, None]:
+    def _handle_item(self, item: OutputItem) -> t.Generator[str, None, None]:
         _colored = partial(colored, color=self._get_color(item.job_name), force_color=True)
         _decorate = partial(_decorate_line, job_name=item.job_name, _colored=_colored)
 
@@ -67,7 +67,7 @@ class Formatter(ThreadingActor):
         )
 
 
-def _decorate_line(line: str, job_name: str, _colored: Callable) -> List[str]:
+def _decorate_line(line: str, job_name: str, _colored: t.Callable) -> t.List[str]:
     if line.startswith("[command]"):
         return [colored("$ " + line.removeprefix("[command]"), "white", force_color=True)]
 

@@ -3,8 +3,8 @@
 import asyncio as aio
 import json
 import multiprocessing as mp
+import typing as t
 from contextlib import suppress
-from typing import List, NamedTuple
 
 import websockets.client
 
@@ -23,11 +23,11 @@ WS_HEADERS = {
 }
 
 
-class OutputItem(NamedTuple):
+class OutputItem(t.NamedTuple):
     """Holds an output item."""
 
     job_name: str
-    lines: List[str]
+    lines: t.List[str]
 
 
 def run_streamer(ws_sub: WsSub, queue: mp.Queue) -> mp.Process:
@@ -63,7 +63,7 @@ async def _stream_it(ws_sub: WsSub, queue: mp.Queue) -> None:
             return
 
 
-def _extract_lines(msg: str | bytes) -> List[str]:
+def _extract_lines(msg: str | bytes) -> t.List[str]:
     _msg = msg.decode() if isinstance(msg, bytes) else msg
     with suppress(Exception):
         return [l["line"] for l in json.loads(_msg)["data"]["data"]["lines"]]
