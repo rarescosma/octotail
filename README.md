@@ -15,8 +15,8 @@ browsers, you-name-it, and __octotail__ was born.
 
 ## Wait, what?!
 
-Invoked with a `commit_sha` (and optionally `--workflow-name` 
-and/or `--ref-name`), it polls the GitHub API for a matching workflow run. 
+Invoked with a `commit_sha` (and optionally `--workflow` and/or `--ref-name`), 
+it polls the GitHub API for a matching, active run. 
 When a job associated with the run starts, it instructs a headless 
 chromium-based browser to visit the job's page.
 
@@ -151,33 +151,35 @@ section of the mitmproxy documentation, changing `~/.mitmproxy` with
  --ref-name) and attempt to tail its logs.
  NOTE: the <COMMIT_SHA> has to be of the full 40 characters length.
 
-╭─ Arguments ──────────────────────────────────────────────────────────────────────────────────────╮
-│ *    commit_sha      TEXT  Full commit SHA that triggered the workflow. [default: None]          │
-│                            [required]                                                            │
-╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
-╭─ Options ────────────────────────────────────────────────────────────────────────────────────────╮
-│ *  --gh-pat                         TEXT     GitHub personal access token. (for API auth)        │
-│                                              [env var: _GH_PAT]                                  │
-│                                              [required]                                          │
-│ *  --gh-user                        TEXT     GitHub username. (for web auth) [env var: _GH_USER] │
-│                                              [required]                                          │
-│ *  --gh-pass                        TEXT     GitHub password. (for web auth) [env var: _GH_PASS] │
-│                                              [required]                                          │
-│    --gh-otp                         TEXT     GitHub OTP. (for web auth) [env var: _GH_OTP]       │
-│                                              [default: None]                                     │
-│    --workflow  -w                   TEXT     Only consider workflows with this name.             │
-│    --ref-name  -r                   TEXT     Only consider workflows triggered by this ref.      │
-│                                              Example: 'refs/heads/main'                          │
-│    --repo      -R                   TEXT     Use this GitHub repo to look for workflow runs. If  │
-│                                              unspecified, will look for a remote matching        │
-│                                              'git@github.com:<user>/<repo>.git' in the current   │
-│                                              directory.                                          │
-│                                              Examples: 'user/repo' OR 'org_name/repo'            │
-│    --headless      --no-headless             [env var: _HEADLESS] [default: headless]            │
-│    --port                           INTEGER  [env var: _PORT]                                    │
-│                                              [default: (random in range 8100-8500)]              │
-│    --help                                    Show this message and exit.                         │
-╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+ - Arguments --------------------------------------------------------------------------------------
+  *    commit_sha      TEXT  Full commit SHA that triggered the workflow. [default: None]
+                             [required]
+
+ - Options ----------------------------------------------------------------------------------------
+  *  --gh-pat                         TEXT     GitHub personal access token. (for API auth)
+                                               [env var: _GH_PAT]
+                                               [required]
+  *  --gh-user                        TEXT     GitHub username. (for web auth) [env var: _GH_USER]
+                                               [required]
+  *  --gh-pass                        TEXT     GitHub password. (for web auth) [env var: _GH_PASS]
+                                               [required]
+     --gh-otp                         TEXT     GitHub OTP. (for web auth) [env var: _GH_OTP]
+                                               [default: None]
+     --workflow  -w                   TEXT     Only consider workflows with this name.
+     --ref-name  -r                   TEXT     Only consider workflows triggered by this ref.
+                                               Example: 'refs/heads/main'
+     --repo      -R                   TEXT     Use this GitHub repo to look for workflow runs. If
+                                               unspecified, will look for a remote matching
+                                               'git@github.com:<user>/<repo>.git' in the current
+                                               directory.
+                                               Examples: 'user/repo' OR 'org_name/repo'
+     --headless      --no-headless             Run browser in headless mode. [env var: _HEADLESS]
+                                               [default: headless]
+     --port                           INTEGER  Port the proxy will listen on.
+                                               [env var: _PORT]
+                                               [default: (random in range 8100-8500)]
+     --help                                    Show this message and exit.
+
 ```
 
 ### Tail after push
