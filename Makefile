@@ -9,4 +9,4 @@ install:
 	ln -sf $(PWD)/octotail/main.py /usr/local/bin/octotail
 
 bump:
-	bumpversion patch --verbose pyproject.toml --commit --sign-tags --tag
+	bumpversion patch --verbose pyproject.toml uv.lock --commit --sign-tags --tag
