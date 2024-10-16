@@ -48,7 +48,6 @@ jobs:
         run: |
           uv python find 3.12 || uv python install 3.12
           uv venv
-          source .venv/bin/activate
           uv sync --link-mode=copy
       - name: Run pycheck-parallel
         run: |
@@ -80,7 +79,6 @@ jobs:
         shell: bash
         run: |
           test_version="${{ needs.get-versions.outputs.test_version }}"
-          source .venv/bin/activate
           uv build
           uvx --from=toml-cli toml set --toml-path=pyproject.toml project.version "${test_version}"
           uv build
@@ -90,7 +88,6 @@ jobs:
           TEST_PYPI_TOKEN: ${{ secrets.TEST_PYPI_TOKEN }}
         run: |
           test_version="${{ needs.get-versions.outputs.test_version }}"
-          source .venv/bin/activate
           uv publish --publish-url https://test.pypi.org/legacy/ --username=__token__ --password="$TEST_PYPI_TOKEN" "dist/*-${test_version}*"
       - name: Publish to pypi
         if: "github.ref == 'refs/heads/ci' && !contains(github.event.head_commit.message, '[cron]')"
@@ -99,8 +96,9 @@ jobs:
           PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
         run: |
           version="${{ needs.get-versions.outputs.version }}"
+          test_version="${{ needs.get-versions.outputs.test_version }}"
           git checkout pyproject.toml
-          source .venv/bin/activate
+          find ./dist -name "*-${test_version}*" -delete
           uv publish --username=__token__ --password="$PYPI_TOKEN" "dist/*-${version}*"
 
   promote-release:
