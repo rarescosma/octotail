@@ -2,36 +2,34 @@
 name = "octotail"
 version = "1.0.9"
 description = "Live tail GitHub Actions runs on git push"
-authors = [
-    { name = "Rareș Cosma", email = "rares@getbetter.ro" },
-]
+authors = [{ name = "Rareș Cosma", email = "rares@getbetter.ro" }]
 readme = "README.md"
 requires-python = ">=3.12"
 keywords = ["github-actions", "tail", "post-receive", "codecrafters", "git"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
-    "Environment :: Console",
-    "Intended Audience :: Developers",
-    "Programming Language :: Python",
-    "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.12",
-    "Topic :: Software Development :: Version Control :: Git",
-    "Topic :: System :: Logging",
-    "License :: OSI Approved :: The Unlicense (Unlicense)",
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Software Development :: Version Control :: Git",
+  "Topic :: System :: Logging",
+  "License :: OSI Approved :: The Unlicense (Unlicense)",
 ]
 license = { text = "Unlicense" }
 dependencies = [
-    "fake-useragent == 1.5.1",
-    "mitmproxy == 11.0.0",
-    "pygithub == 2.4.0",
-    "pykka == 4.0.2",
-    "pyppeteer == 2.0.0",
-    "pyppeteer-stealth == 2.7.4",
-    "pyxdg == 0.28",
-    "rich == 13.9.2",
-    "termcolor == 2.5.0",
-    "typer-slim == 0.12.5",
-    "websockets == 10.4",
+  "fake-useragent == 1.5.1",
+  "mitmproxy == 11.0.0",
+  "pygithub == 2.4.0",
+  "pykka == 4.0.2",
+  "pyppeteer == 2.0.0",
+  "pyppeteer-stealth == 2.7.4",
+  "pyxdg == 0.28",
+  "rich == 13.9.2",
+  "termcolor == 2.5.0",
+  "typer-slim == 0.12.5",
+  "websockets == 10.4",
 ]
 
 [project.scripts]
@@ -46,15 +44,15 @@ Homepage = "https://getbetter.ro/projects/#octotail"
 
 [tool.uv]
 dev-dependencies = [
-    "black == 24.10.0",
-    "bumpversion==0.6.0",
-    "isort == 5.13.2",
-    "mypy == 1.11.2",
-    "pycln == 2.4.0",
-    "pylint == 3.3.1",
-    "ptyprocess == 0.7.0",
-    "vulture == 2.13",
-    "ruff>=0.6.9",
+  "black == 24.10.0",
+  "bumpversion==0.6.0",
+  "isort == 5.13.2",
+  "mypy == 1.11.2",
+  "ptyprocess == 0.7.0",
+  "pycln == 2.4.0",
+  "pylint == 3.3.1",
+  "ruff>=0.6.9",
+  "vulture == 2.13",
 ]
 
 [build-system]
@@ -62,12 +60,25 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.sdist]
-include = [
-    "/octotail",
-    "/examples",
-]
+include = ["/octotail", "/examples"]
 
 [tool.ruff]
 line-length = 100
-lint.extend-select = ["B", "PT", "PTH", "UP", "TRY", "SIM", "TID", "PERF", "RUF", "C", "E", "F", "I", "W", "PLR"]
-lint.ignore = ["D", "COM", "B010", "TRY003", "E501", "C901"]
+lint.extend-select = [
+  "B",
+  "C",
+  "E",
+  "F",
+  "I",
+  "PERF",
+  "PLR",
+  "PT",
+  "PTH",
+  "RUF",
+  "SIM",
+  "TID",
+  "TRY",
+  "UP",
+  "W",
+]
+lint.ignore = ["B010", "C901", "COM", "D", "E501", "TRY003"]

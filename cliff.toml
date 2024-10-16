@@ -25,6 +25,6 @@ body = """
 filter_unconventional = false
 conventional_commits = false
 commit_parsers = [
-    { message = "^Bump version", skip = true },
-    { message = "^", group = "Changelog" },
+  { message = "^Bump version", skip = true },
+  { message = "^", group = "Changelog" },
 ]
