@@ -84,14 +84,35 @@ sudo ln -sf $(pwd)/octotail/main.py /usr/local/bin/octotail
 
 ### __Important:__ post-install
 
-Run `mitmproxy` once and install its root certificate:
+Run `generate-cert` once to generate the proxy root certificate:
 
 ```shell
-mitmproxy
-^C
-
-sudo trust anchor ~/.mitmproxy/mitmproxy-ca-cert.cer
+generate-cert
 ```
+
+#### Install the generated proxy root certificate
+
+This step is highly platform-dependent.
+
+##### On Arch Linux
+
+```shell
+sudo trust anchor ~/.local/share/octotail/mitmproxy/mitmproxy-ca-cert.cer
+```
+
+#### On macOS
+
+```shell
+sudo security add-trusted-cert -d -p ssl -p basic \
+  -k /Library/Keychains/System.keychain \
+  ~/local/.share/octotail/mitmproxy/mitmproxy-ca-cert.pem
+```
+
+#### Others
+
+Please refer to the ["Installing the mitmproxy CA certificate manually"][]
+section of the mitmproxy documentation, changing `~/.mitmproxy` with 
+`~/.local/share/octotail/mitmproxy` where appropriate.
 
 ## Usage
 
@@ -205,3 +226,5 @@ git push proxy
 
 [Codecrafters]: https://codecrafters.io/
 [mitmproxy]: https://mitmproxy.org/
+[uv & uvx]: https://github.com/astral-sh/uv
+["Installing the mitmproxy CA certificate manually"]: https://docs.mitmproxy.org/stable/concepts-certificates/#installing-the-mitmproxy-ca-certificate-manually
