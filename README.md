@@ -41,13 +41,14 @@ extraction, so the overhead is minimal. (well, it's still an empty browser)
 - python 3.12
 - a working chromium-based browser under `/usr/bin/chromium`
 
-Make sure `/usr/bin/chromium` points to a working chromium-based browser.
-
-This is a good option for Arch Linux users:
-
-```shell
-paru ungoogled-chromium-bin
-```
+> [!IMPORTANT]
+> Make sure `/usr/bin/chromium` points to a working chromium-based browser.
+> 
+> This is a good option for Arch Linux users:
+> 
+> ```shell
+> paru ungoogled-chromium-bin
+> ```
 
 ## Installation
 
@@ -115,37 +116,38 @@ poetry install --no-dev
 sudo ln -sf $(pwd)/octotail/main.py /usr/local/bin/octotail
 ```
 
-### __Important:__ post-install
-
-Run `generate-cert` once to generate the proxy root certificate:
-
-```shell
-generate-cert
-```
-
-#### Install the generated proxy root certificate
-
-This step is highly platform-dependent.
-
-##### On Arch Linux
-
-```shell
-sudo trust anchor ~/.local/share/octotail/mitmproxy/mitmproxy-ca-cert.cer
-```
-
-#### On macOS
-
-```shell
-sudo security add-trusted-cert -d -p ssl -p basic \
-  -k /Library/Keychains/System.keychain \
-  ~/local/.share/octotail/mitmproxy/mitmproxy-ca-cert.pem
-```
-
-#### Others
-
-Please refer to the ["Installing the mitmproxy CA certificate manually"][]
-section of the mitmproxy documentation, changing `~/.mitmproxy` with 
-`~/.local/share/octotail/mitmproxy` where appropriate.
+> [!IMPORTANT] 
+> ### Post-install
+>
+> Run `generate-cert` once to generate the proxy root certificate:
+> 
+> ```shell
+> generate-cert
+> ```
+> 
+> #### Install the generated proxy root certificate
+> 
+> This step is highly platform-dependent.
+> 
+> ##### On Arch Linux
+> 
+> ```shell
+> sudo trust anchor ~/.local/share/octotail/mitmproxy/mitmproxy-ca-cert.cer
+> ```
+> 
+> #### On macOS
+> 
+> ```shell
+> sudo security add-trusted-cert -d -p ssl -p basic \
+>   -k /Library/Keychains/System.keychain \
+>   ~/local/.share/octotail/mitmproxy/mitmproxy-ca-cert.pem
+> ```
+> 
+> #### Others
+> 
+> Please refer to the ["Installing the mitmproxy CA certificate manually"][]
+> section of the mitmproxy documentation, changing `~/.mitmproxy` with 
+> `~/.local/share/octotail/mitmproxy` where appropriate.
 
 ## Usage
 
@@ -254,9 +256,10 @@ your setup:
 - set `_GH_PAT_CMD` to a command that outputs your GitHub personal access token,
   e.g. `_GH_PAT_CMD="pass github_pat"`
 
-**NOTE:** the hook assumes one is using `zsh`. The shebang can be changed to 
-any other shell, but it's best to invoke it with the right flags to get an 
-interactive, login shell. Useful to get access to custom functions and aliases.
+> [!NOTE]
+> The hook assumes one is using `zsh`. The shebang can be changed to 
+> any other shell, but it's best to invoke it with the right flags to get an 
+> interactive, login shell. Useful to get access to custom functions and aliases.
 
 That's it! (phew) - now try pushing to the `proxy` remote and check
 if the GitHub Actions workflow run logs are streaming right back:
