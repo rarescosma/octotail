@@ -54,6 +54,7 @@ dev-dependencies = [
     "pylint == 3.3.1",
     "ptyprocess == 0.7.0",
     "vulture == 2.13",
+    "ruff>=0.6.9",
 ]
 
 [build-system]
@@ -65,3 +66,8 @@ include = [
     "/octotail",
     "/examples",
 ]
+
+[tool.ruff]
+line-length = 100
+lint.extend-select = ["B", "PT", "PTH", "UP", "TRY", "SIM", "TID", "PERF", "RUF", "C", "E", "F", "I", "W", "PLR"]
+lint.ignore = ["D", "COM", "B010", "TRY003", "E501", "C901"]

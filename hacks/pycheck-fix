@@ -7,6 +7,7 @@ echo
 echo ">>>>>> pycln <<<<<<"
 pycln "${_module}"
 echo "-------------------"
+
 echo
 echo ">>>>>> isort <<<<<<"
 isort -l100 -m3 --tc "${_module}"
@@ -16,6 +17,12 @@ echo "-------------------"
 echo
 echo ">>>>>> black <<<<<<"
 black -l 100 "${_module}"
+echo "-------------------"
+
+# ruff is good
+echo
+echo ">>>>>> ruff <<<<<<<"
+ruff check "${_module}" --fix
 echo "-------------------"
 
 # types are good
