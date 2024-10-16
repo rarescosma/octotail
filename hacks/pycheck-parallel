@@ -1,0 +1,7 @@
+#!/usr/bin/env -S parallel --shebang --group --tag --jobs 8
+pycln octotail --check
+isort -l100 -m3 --tc octotail --check-only --diff
+black -l 100 octotail --check
+mypy --ignore-missing-imports --disallow-untyped-defs octotail
+pylint octotail
+./hacks/update-readme --check

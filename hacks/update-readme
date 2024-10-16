@@ -63,6 +63,7 @@ def main(check: bool) -> None:
         diff = subprocess.run(["diff", str(readme_temp), str(actual_temp)], check=False)
         if diff.returncode != 0:
             if check:
+                print("README.md not in sync!")
                 sys.exit(1)
 
             r_lines = readme.splitlines()
@@ -78,3 +79,4 @@ def main(check: bool) -> None:
 if __name__ == "__main__":
     _check = len(sys.argv) > 1 and sys.argv[1] == "--check"
     main(_check)
+    print("all good cap'n")
