@@ -5,7 +5,10 @@ from contextvars import ContextVar
 from dataclasses import dataclass
 from functools import wraps
 from typing import Annotated, Callable
+from unittest.mock import patch
 
+from rich.box import Box
+from rich.panel import Panel
 from typer import Argument, BadParameter, Option, Typer
 
 _REPO_HELP = "\n".join(
@@ -16,6 +19,8 @@ _REPO_HELP = "\n".join(
         "\nExamples: 'user/repo' OR 'org_name/repo'",
     ]
 )
+
+NO_FRILLS: Box = Box(" -- \n" + "    \n" * 7)
 
 
 def _sha_callback(value: str) -> str:
@@ -119,6 +124,10 @@ def entrypoint(main_fn: Callable[[Opts], None]) -> Callable:
         app = Typer(add_completion=False, rich_markup_mode="rich")
         app.command(no_args_is_help=True)(Opts)
         _post_init.set(wrapped)
-        app()
+        with patch(
+            "typer.rich_utils.Panel",
+            lambda *args, **kwargs: Panel(*args, **{**kwargs, "box": NO_FRILLS}),
+        ) as _:
+            app()
 
     return wrapper
