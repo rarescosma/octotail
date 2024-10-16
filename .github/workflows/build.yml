@@ -18,7 +18,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Grab the version from pyproject.toml
         env:
-          TEST_PYPI_SUFFIX: "a0"
+          TEST_PYPI_SUFFIX: "a1"
         shell: bash
         run: |
           version="$(head -n5 pyproject.toml | grep -oE "version = \"[0-9\.]+\"" | cut -d'"' -f2)"
