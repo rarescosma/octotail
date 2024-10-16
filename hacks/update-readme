@@ -36,7 +36,7 @@ def _get_readme_help(readme: str) -> Help:
 
 
 def _get_actual_help(cmd: List[str]) -> List[str]:
-    p = PtyProcessUnicode.spawn(cmd, dimensions=(80, 100), env={**os.environ, "NO_COLOR": "1"})
+    p = PtyProcessUnicode.spawn(cmd, dimensions=(100, 100), env={**os.environ, "NO_COLOR": "1"})
     ansi_escape = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
     script_output = []
     while True:
