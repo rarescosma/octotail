@@ -100,9 +100,16 @@ class Opts:
             callback=_repo_callback,
         ),
     ] = None
-    headless: Annotated[bool, Option(envvar="_HEADLESS")] = True
+    headless: Annotated[bool, Option(envvar="_HEADLESS", help="Run browser in headless mode.")] = (
+        True
+    )
     port: Annotated[
-        int | None, Option(envvar="_PORT", show_default="random in range 8100-8500")
+        int | None,
+        Option(
+            envvar="_PORT",
+            help="Port the proxy will listen on.",
+            show_default="random in range 8100-8500",
+        ),
     ] = None
 
     def __post_init__(self) -> None:
