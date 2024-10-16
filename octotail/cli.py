@@ -1,5 +1,6 @@
 """ Options class + some magic so we can define our args in one place only. """
 
+import os
 import re
 from contextvars import ContextVar
 from dataclasses import dataclass
@@ -11,6 +12,7 @@ from rich.box import Box
 from rich.panel import Panel
 from typer import Argument, BadParameter, Option, Typer
 
+NO_RICH = os.getenv("NO_RICH") not in ["0", "false", "False", None]
 _REPO_HELP = "\n".join(
     [
         "Use this GitHub repo to look for workflow runs.",
@@ -121,7 +123,11 @@ def entrypoint(main_fn: Callable[[Opts], None]) -> Callable:
 
     @wraps(main_fn)
     def wrapper() -> None:
-        app = Typer(add_completion=False, rich_markup_mode="rich")
+        app = Typer(
+            add_completion=False,
+            rich_markup_mode=(None if NO_RICH else "rich"),
+            pretty_exceptions_show_locals=False,
+        )
         app.command(no_args_is_help=True)(Opts)
         _post_init.set(wrapped)
         with patch(
