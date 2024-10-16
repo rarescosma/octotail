@@ -74,7 +74,7 @@ class ExitRequest:
     """Exit request message."""
 
 
-type BrowseRequest = t.Union[VisitRequest, CloseRequest, ExitRequest]
+type BrowseRequest = VisitRequest | CloseRequest | ExitRequest
 
 
 class BrowserWatcher(ThreadingActor):
@@ -122,9 +122,9 @@ async def _launch_browser(opts: Opts) -> Browser:
 async def _browser(opts: Opts, inbox: mp.Queue) -> None:
     browser = await _launch_browser(opts)
     tasks = set()
-    open_pages: t.Dict[int, Page] = {}
+    open_pages: dict[int, Page] = {}
     in_progress = aio.Event()
-    visit_queue: t.Deque[VisitRequest] = deque()
+    visit_queue: deque[VisitRequest] = deque()
 
     def _schedule_visit(_visit_req: VisitRequest) -> None:
         in_progress.set()
@@ -214,11 +214,8 @@ async def _nom_cookies(user: str, page: Page) -> bool:
 
 def _save_user_cookies(user: str, cookies: list[dict]) -> None:
     COOKIE_JAR.parent.mkdir(parents=True, exist_ok=True)
-    if COOKIE_JAR.exists():
-        existing = json.loads(COOKIE_JAR.read_text())
-    else:
-        existing = {}
-    COOKIE_JAR.write_text(json.dumps({**existing, **{user: cookies}}))
+    existing = json.loads(COOKIE_JAR.read_text()) if COOKIE_JAR.exists() else {}
+    COOKIE_JAR.write_text(json.dumps({**existing, user: cookies}))
 
 
 def _get_user_cookies(user: str) -> dict | None:

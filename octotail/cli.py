@@ -14,6 +14,7 @@ from typer import Argument, BadParameter, Option, Typer
 from typer.core import TyperCommand
 
 NO_RICH = os.getenv("NO_RICH") not in ["0", "false", "False", None]
+NO_FRILLS: Box = Box("----\n" + "    \n" * 7)
 _REPO_HELP = "\n".join(
     [
         "Use this GitHub repo to look for workflow runs.",
@@ -22,14 +23,13 @@ _REPO_HELP = "\n".join(
         "\nExamples: `user/repo` OR `org_name/repo`",
     ]
 )
-
-NO_FRILLS: Box = Box("----\n" + "    \n" * 7)
+_SHA_LENGTH = 40
 
 
 def _sha_callback(value: str) -> str:
-    if len(value) != 40:
-        raise BadParameter("need a full 40 character long commit sha")
-    if value == 40 * "0":
+    if len(value) != _SHA_LENGTH:
+        raise BadParameter(f"need a full {_SHA_LENGTH} character long commit sha")
+    if value == _SHA_LENGTH * "0":
         raise BadParameter("refusing to work with the all-zero commit sha")
     return value
 

@@ -15,7 +15,7 @@ from termcolor._types import Color
 from octotail.streamer import OutputItem
 from octotail.utils import debug, flatmap, remove_consecutive_falsy
 
-WHEEL: t.List[Color] = [
+WHEEL: list[Color] = [
     "light_green",
     "light_yellow",
     "light_blue",
@@ -29,7 +29,7 @@ class Formatter(ThreadingActor):
 
     queue: mp.JoinableQueue
     _wheel_idx: int
-    _color_map: t.Dict[str, int]
+    _color_map: dict[str, int]
 
     def __init__(self, queue: mp.JoinableQueue):
         super().__init__()
@@ -67,7 +67,7 @@ class Formatter(ThreadingActor):
         )
 
 
-def _decorate_line(line: str, job_name: str, _colored: t.Callable) -> t.List[str]:
+def _decorate_line(line: str, job_name: str, _colored: t.Callable) -> list[str]:
     if line.startswith("[command]"):
         return [colored("$ " + line.removeprefix("[command]"), "white", force_color=True)]
 

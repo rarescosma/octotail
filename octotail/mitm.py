@@ -5,7 +5,6 @@ import copy
 import json
 import multiprocessing
 import sys
-import typing as t
 from argparse import Namespace
 from contextlib import suppress
 from dataclasses import dataclass
@@ -71,7 +70,7 @@ class ProxyWatcher(ThreadingActor):
             self.mgr.stop()
 
         old_line, buffer = "-", []
-        old_buffer: t.List[str] = []
+        old_buffer: list[str] = []
         while not self._stop_event.is_set():
             with suppress(Empty):
                 line = self._q.get(timeout=1).strip()
@@ -99,7 +98,7 @@ class ProxyWatcher(ThreadingActor):
 
 def _extract_job_id(buffer: str) -> int | None:
     with suppress(Exception):
-        dec = (base64.b64decode(k) for k in json.loads(buffer)["subscribe"].keys())
+        dec = (base64.b64decode(k) for k in json.loads(buffer)["subscribe"])
         items = (str(json.loads(d[: d.index(b"}") + 1].decode())["c"]) for d in dec)
         good = next(item for item in items if item.startswith("check_runs"))
         return int(good.split(":")[1])

@@ -27,7 +27,7 @@ class OutputItem(t.NamedTuple):
     """Holds an output item."""
 
     job_name: str
-    lines: t.List[str]
+    lines: list[str]
 
 
 def run_streamer(ws_sub: WsSub, queue: mp.Queue) -> mp.Process:
@@ -63,8 +63,8 @@ async def _stream_it(ws_sub: WsSub, queue: mp.Queue) -> None:
             return
 
 
-def _extract_lines(msg: str | bytes) -> t.List[str]:
+def _extract_lines(msg: str | bytes) -> list[str]:
     _msg = msg.decode() if isinstance(msg, bytes) else msg
     with suppress(Exception):
-        return [l["line"] for l in json.loads(_msg)["data"]["data"]["lines"]]
+        return [line_obj["line"] for line_obj in json.loads(_msg)["data"]["data"]["lines"]]
     return []

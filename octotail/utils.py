@@ -10,6 +10,7 @@ import typing as t
 from pathlib import Path
 
 DEBUG = os.getenv("DEBUG") not in ["0", "false", "False", None]
+FIND_FREE_PORT_TRIES = 100
 
 A = t.TypeVar("A")
 B = t.TypeVar("B")
@@ -35,15 +36,15 @@ def flatmap(f: t.Callable[[A], t.Iterable[B]], xs: t.Iterable[A]) -> t.Iterable[
 
 
 def log(
-    msg: str, /, stack_offset: int = 1, file: t.Any = sys.stdout, skip_prefix: bool = False
+    msg: str, *, stack_offset: int = 1, file: t.Any = sys.stdout, skip_prefix: bool = False
 ) -> None:
     if skip_prefix:
         prefix = ""
     else:
         frame = inspect.stack()[stack_offset]
         module = inspect.getmodule(frame[0])
-        if module is not None and getattr(module, "__file__") is not None:
-            module_name = Path(getattr(module, "__file__")).with_suffix("").name
+        if module is not None and module.__file__ is not None:
+            module_name = Path(module.__file__).with_suffix("").name
         else:
             module_name = "?"
         prefix = f"[{module_name}:{frame.function}]: "
@@ -64,7 +65,7 @@ def retries[
 
     def wrapper(fn: t.Callable[P, Result | Retry]) -> t.Callable[P, Result]:
         def wrapped(*args: P.args, **kwargs: P.kwargs) -> Result:
-            for _ in range(0, num_retries):
+            for _ in range(num_retries):
                 match fn(*args, **kwargs):
                     case Ok(x):
                         return x
@@ -84,7 +85,7 @@ def find_free_port(min_port: int = 8100, max_port: int = 8500) -> int | None:
     num_tries = 0
     random_port = random.randint(min_port, max_port)
     while not is_port_open(random_port):
-        if num_tries > 100:
+        if num_tries > FIND_FREE_PORT_TRIES:
             return None
         random_port = random.randint(min_port, max_port)
         num_tries += 1

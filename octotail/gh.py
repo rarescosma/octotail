@@ -39,8 +39,8 @@ class RunWatcher(ThreadingActor):
     wf_run: WorkflowRun
     stop_event: Event
 
-    _new_jobs: t.Set[int] = set()
-    _concluded_jobs: t.Set[int] = set()
+    _new_jobs: set[int]
+    _concluded_jobs: set[int]
 
     def __init__(self, mgr: ActorRef, wf_run: WorkflowRun):
         super().__init__()
@@ -48,18 +48,21 @@ class RunWatcher(ThreadingActor):
         self.wf_run = wf_run
         self.stop_event = mgr.proxy().stop_event.get()
 
+        self._new_jobs = set()
+        self._concluded_jobs = set()
+
     def watch(self) -> None:
         while not self.stop_event.is_set():
             self.wf_run.update()
 
             with suppress(Exception):
                 for job in self.wf_run.jobs():
-                    if job.conclusion and not job.id in self._concluded_jobs:
+                    if job.conclusion and job.id not in self._concluded_jobs:
                         if not self._tell(JobDone(job.id, job.name, job.conclusion)):
                             return
                         self._concluded_jobs.add(job.id)
                         continue
-                    if not job.id in self._new_jobs.union(self._concluded_jobs):
+                    if job.id not in self._new_jobs.union(self._concluded_jobs):
                         if not self._tell(job):
                             return
                         self._new_jobs.add(job.id)
@@ -85,7 +88,7 @@ def get_active_run(repo: Repository, opts: Opts) -> Result[WorkflowRun] | Retry:
         if runs.totalCount == 0:
             return Retry()
 
-        filters: t.List[t.Callable[[WorkflowRun], bool]] = [lambda wf: wf.status in VALID_STATI]
+        filters: list[t.Callable[[WorkflowRun], bool]] = [lambda wf: wf.status in VALID_STATI]
         if opts.workflow_name:
             filters.append(lambda wf: wf.name == t.cast(str, opts.workflow_name))
         if opts.ref_name:

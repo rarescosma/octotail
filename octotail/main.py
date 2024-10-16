@@ -5,15 +5,12 @@ import dataclasses
 import multiprocessing as mp
 import sys
 import time
-import typing as t
-from pathlib import Path
 from threading import Event
 
 from github import Auth, Github
 from github.WorkflowJob import WorkflowJob
 from github.WorkflowRun import WorkflowRun
 from pykka import ActorRegistry, ThreadingActor
-from xdg.BaseDirectory import xdg_cache_home
 
 from octotail.browser import BrowseRequest, BrowserWatcher, CloseRequest, ExitRequest, VisitRequest
 from octotail.cli import Opts, entrypoint
@@ -23,9 +20,9 @@ from octotail.mitm import MITM_CONFIG_DIR, ProxyWatcher, WsSub
 from octotail.streamer import OutputItem, run_streamer
 from octotail.utils import debug, find_free_port, log
 
-COOKIE_JAR = Path(xdg_cache_home) / "octotail" / "gh-cookies.json"
+GENERATE_CERT_TRIES = 25
 
-type MgrMessage = t.Union[WorkflowJob, WsSub, JobDone, WorkflowDone]
+type MgrMessage = WorkflowJob | WsSub | JobDone | WorkflowDone
 
 
 class Manager(ThreadingActor):
@@ -35,8 +32,8 @@ class Manager(ThreadingActor):
     output_queue: mp.JoinableQueue
     stop_event: Event
 
-    streamers: t.Dict[int, mp.Process]
-    job_map: t.Dict[int, str]
+    streamers: dict[int, mp.Process]
+    job_map: dict[int, str]
 
     def __init__(self, browse_queue: mp.Queue, output_queue: mp.JoinableQueue, stop: Event):
         super().__init__()
@@ -142,7 +139,7 @@ def generate_cert() -> None:
     cert_file = MITM_CONFIG_DIR / "mitmproxy-ca-cert.cer"
     tries = 0
     while (not cert_file.exists()) or (not cert_file.stat().st_size):
-        if tries > 25:
+        if tries > GENERATE_CERT_TRIES:
             debug("giving up waiting for mitmproxy to generate a certificate")
             sys.exit(1)
         time.sleep(0.2)
