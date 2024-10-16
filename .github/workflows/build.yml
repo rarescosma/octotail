@@ -11,93 +11,102 @@ permissions:
   contents: write
 
 jobs:
-  get-version:
-    name: get-version
+  get-versions:
+    name: get-versions
     runs-on: arc-octotail
     steps:
       - uses: actions/checkout@v4
       - name: Grab the version from pyproject.toml
+        env:
+          TEST_PYPI_SUFFIX: "a0"
         shell: bash
         run: |
-          version="v$(head -n5 pyproject.toml | grep -oE "version = \"[0-9\.]+\"" | cut -d'"' -f2)"
+          version="$(head -n5 pyproject.toml | grep -oE "version = \"[0-9\.]+\"" | cut -d'"' -f2)"
           echo "VERSION=$version" >> $GITHUB_ENV
+          echo "TEST_VERSION=${version}${TEST_PYPI_SUFFIX}" >> $GITHUB_ENV
     outputs:
       version: ${{ env.VERSION }}
+      test_version: ${{ env.TEST_VERSION }}
 
   smoke-test:
     name: smoke-test
     runs-on: arc-octotail
     steps:
-     - uses: actions/checkout@v4
-     - uses: actions/setup-python@v5
-       name: Setup python
-       id: setup-python
-       with:
-         python-version: '3.12'
-     - name: Install poetry
-       uses: snok/install-poetry@v1
-       with:
-         virtualenvs-create: true
-         virtualenvs-in-project: true
-         virtualenvs-path: .venv
-         installer-parallel: true
-     - name: Load cached venv
-       id: cached-poetry-dependencies
-       uses: actions/cache@v4
-       with:
-         path: .venv
-         key: venv-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('**/poetry.lock') }}
-     - name: Install dependencies
-       if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
-       run: poetry install --no-interaction
-     - name: Run tests
-       run: |
-         source .venv/bin/activate
-         STRICT=1 ./hacks/pycheck octotail
-         ./hacks/update-readme --check
+      - uses: actions/checkout@v4
+      - name: Has uv
+        id: has_uv
+        run: |
+          if command -v uv &> /dev/null; then
+            echo "result=true" >> $GITHUB_OUTPUT
+          else
+            echo "result=false" >> $GITHUB_OUTPUT
+          fi
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        if: ${{ steps.has_uv.outputs.result == 'false' }}
+      - name: Setup project with uv
+        run: |
+          uv python find 3.12 || uv python install 3.12
+          uv venv
+          source .venv/bin/activate
+          uv sync --link-mode=copy
+      - name: Run pycheck-parallel
+        run: |
+          source .venv/bin/activate
+          ./hacks/pycheck-parallel
 
   publish-wheels:
     name: publish-wheels
-    needs: [ "get-version", "smoke-test" ]
+    needs: [ "get-versions", "smoke-test" ]
     runs-on: arc-octotail
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        name: Setup python
-        with:
-          python-version: '3.12'
-      - name: Install poetry
+      - uses: actions/checkout@v4
+      - name: Has uv
+        id: has_uv
+        run: |
+          if command -v uv &> /dev/null; then
+            echo "result=true" >> $GITHUB_OUTPUT
+          else
+            echo "result=false" >> $GITHUB_OUTPUT
+          fi
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        if: ${{ steps.has_uv.outputs.result == 'false' }}
+      - name: Setup project with uv
+        run: |
+          uv python find 3.12 || uv python install 3.12
+          uv venv
+      - name: Build wheels
         shell: bash
         run: |
-          python3 -m venv .venv
+          test_version="${{ needs.get-versions.outputs.test_version }}"
           source .venv/bin/activate
-          pip3 install -q poetry==1.8.3
-      - name: Poetry build
-        shell: bash
-        run: |
-          source .venv/bin/activate
-          poetry build
-      - name: Poetry publish to test.pypi
+          uv build
+          uvx --from=toml-cli toml set --toml-path=pyproject.toml project.version "${test_version}"
+          uv build
+      - name: Publish to test.pypi
         shell: bash
         env:
           TEST_PYPI_TOKEN: ${{ secrets.TEST_PYPI_TOKEN }}
         run: |
+          test_version="${{ needs.get-versions.outputs.test_version }}"
           source .venv/bin/activate
-          poetry config repositories.test-pypi https://test.pypi.org/legacy/
-          poetry publish -r test-pypi --username=__token__ --password="$TEST_PYPI_TOKEN"
-      - name: Poetry publish to pypi
+          uv publish --publish-url https://test.pypi.org/legacy/ --username=__token__ --password="$TEST_PYPI_TOKEN" "dist/*-${test_version}*"
+      - name: Publish to pypi
+        if: "github.ref == 'refs/heads/ci' && !contains(github.event.head_commit.message, '[cron]')"
         shell: bash
         env:
           PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
         run: |
+          version="${{ needs.get-versions.outputs.version }}"
+          git checkout pyproject.toml
           source .venv/bin/activate
-          poetry publish --username=__token__ --password="$PYPI_TOKEN"
+          uv publish --username=__token__ --password="$PYPI_TOKEN" "dist/*-${version}*"
 
   promote-release:
     if: "github.ref == 'refs/heads/ci' && !contains(github.event.head_commit.message, '[cron]')"
     name: promote-release
-    needs: [ "publish-wheels", "get-version" ]
+    needs: [ "publish-wheels", "get-versions" ]
     runs-on: arc-octotail
     steps:
       - uses: actions/checkout@v4
@@ -106,5 +115,5 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
         run: |
-          version="${{ needs.get-version.outputs.version }}"
-          gh release edit "$version" --draft=false --latest
+          version="${{ needs.get-versions.outputs.version }}"
+          gh release edit "v${version}" --draft=false --latest

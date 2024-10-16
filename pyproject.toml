@@ -1,50 +1,60 @@
-[tool.poetry]
+[project]
 name = "octotail"
 version = "1.0.7"
 description = "Live tail GitHub Actions runs on git push"
-authors = ["Rareș Cosma <rares@getbetter.ro>"]
-license = "UNLICENSE"
+authors = [
+    { name = "Rareș Cosma", email = "rares@getbetter.ro" }
+]
 readme = "README.md"
-homepage = "https://github.com/rarescosma/octotail"
-repository = "https://github.com/rarescosma/octotail"
-documentation = "https://octotail.readthedocs.io/"
+requires-python = ">=3.12"
 keywords = ["github-actions", "tail", "post-receive", "codecrafters", "git"]
 classifiers = [
-   "Development Status :: 3 - Alpha",
-   "Intended Audience :: Developers",
-   "Programming Language :: Python :: 3",
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "License :: OSI Approved :: The Unlicense (Unlicense)",
+]
+dependencies = [
+    "fake-useragent == 1.5.1",
+    "mitmproxy == 11.0.0",
+    "pygithub == 2.4.0",
+    "pykka == 4.0.2",
+    "pyppeteer == 2.0.0",
+    "pyppeteer-stealth == 2.7.4",
+    "pyxdg == 0.28",
+    "rich == 13.9.2",
+    "termcolor == 2.5.0",
+    "typer-slim == 0.12.5",
+    "websockets == 10.4",
 ]
 
-include = ["examples"]
+[project.scripts]
+octotail = "octotail.main:_main"
 
-[tool.poetry.dependencies]
-python = "^3.12.0"
-fake-useragent = "1.5.1"
-mitmproxy = "11.0.0"
-pygithub = "2.4.0"
-pykka = "4.0.2"
-pyppeteer = "2.0.0"
-pyppeteer-stealth = "2.7.4"
-pyxdg = "0.28"
-typer-slim = "0.12.5"
-websockets = "10.4"
-termcolor = "2.5.0"
-rich = "^13.9.2"
+[project.urls]
+Homepage = "https://github.com/rarescosma/octotail"
+Documentation = "https://github.com/rarescosma/octotail"
+"Source code" = "https://github.com/rarescosma/octotail"
 
-[tool.poetry.group.dev.dependencies]
-python = "^3.12.0"
-black = "24.10.0"
-bumpversion = "0.6.0"
-isort = "5.13.2"
-mypy = "1.11.2"
-pycln = "2.4.0"
-pylint = "3.3.1"
-ptyprocess = "0.7.0"
-vulture = "2.13"
+[tool.uv]
+dev-dependencies = [
+    "black == 24.10.0",
+    "bumpversion==0.6.0",
+    "isort == 5.13.2",
+    "mypy == 1.11.2",
+    "pycln == 2.4.0",
+    "pylint == 3.3.1",
+    "ptyprocess == 0.7.0",
+    "vulture == 2.13",
+]
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
-[tool.poetry.scripts]
-octotail = "octotail.main:_main"
+[tool.hatch.build.targets.sdist]
+include = [
+    "/octotail",
+    "/examples",
+]

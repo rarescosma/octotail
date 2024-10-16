@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - "main"
-      - "dev/test-yml"
+      - "dev"
       - "feature/*"
 
 permissions:
@@ -16,29 +16,24 @@ jobs:
     runs-on: arc-octotail
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        name: Setup python
-        id: setup-python
-        with:
-          python-version: '3.12'
-      - name: Install poetry
-        uses: snok/install-poetry@v1
-        with:
-          virtualenvs-create: true
-          virtualenvs-in-project: true
-          virtualenvs-path: .venv
-          installer-parallel: true
-      - name: Load cached venv
-        id: cached-poetry-dependencies
-        uses: actions/cache@v4
-        with:
-          path: .venv
-          key: venv-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('**/poetry.lock') }}
-      - name: Install dependencies
-        if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
-        run: poetry install --no-interaction
-      - name: Run tests
+      - name: Has uv
+        id: has_uv
+        run: |
+          if command -v uv &> /dev/null; then
+            echo "result=true" >> $GITHUB_OUTPUT
+          else
+            echo "result=false" >> $GITHUB_OUTPUT
+          fi
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        if: ${{ steps.has_uv.outputs.result == 'false' }}
+      - name: Setup project with uv
+        run: |
+          uv python find 3.12 || uv python install 3.12
+          uv venv
+          source .venv/bin/activate
+          uv sync --link-mode=copy
+      - name: Run pycheck-parallel
         run: |
           source .venv/bin/activate
-          STRICT=1 ./hacks/pycheck octotail
-          ./hacks/update-readme --check
+          ./hacks/pycheck-parallel
