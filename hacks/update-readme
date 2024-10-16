@@ -79,4 +79,4 @@ def main(check: bool) -> None:
 if __name__ == "__main__":
     _check = len(sys.argv) > 1 and sys.argv[1] == "--check"
     main(_check)
-    print("all good cap'n")
+    print("All good cap'n!")
