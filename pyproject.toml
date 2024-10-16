@@ -3,18 +3,23 @@ name = "octotail"
 version = "1.0.9"
 description = "Live tail GitHub Actions runs on git push"
 authors = [
-    { name = "Rareș Cosma", email = "rares@getbetter.ro" }
+    { name = "Rareș Cosma", email = "rares@getbetter.ro" },
 ]
 readme = "README.md"
 requires-python = ">=3.12"
 keywords = ["github-actions", "tail", "post-receive", "codecrafters", "git"]
 classifiers = [
     "Development Status :: 3 - Alpha",
+    "Environment :: Console",
     "Intended Audience :: Developers",
-    "Programming Language :: Python :: 3",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3 :: Only",
     "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Version Control :: Git",
+    "Topic :: System :: Logging",
     "License :: OSI Approved :: The Unlicense (Unlicense)",
 ]
+license = { text = "Unlicense" }
 dependencies = [
     "fake-useragent == 1.5.1",
     "mitmproxy == 11.0.0",
@@ -34,9 +39,10 @@ octotail = "octotail.main:_main"
 generate-cert = "octotail.main:generate_cert"
 
 [project.urls]
-Homepage = "https://github.com/rarescosma/octotail"
-Documentation = "https://github.com/rarescosma/octotail"
-"Source code" = "https://github.com/rarescosma/octotail"
+Documentation = "https://github.com/rarescosma/octotail#readme"
+Repository = "https://github.com/rarescosma/octotail"
+Issues = "https://github.com/rarescosma/octotail/issues"
+Homepage = "https://getbetter.ro/projects/#octotail"
 
 [tool.uv]
 dev-dependencies = [
