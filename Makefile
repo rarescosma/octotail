@@ -10,3 +10,6 @@ install:
 
 bump:
 	bumpversion patch --verbose pyproject.toml uv.lock --commit --sign-tags --tag
+
+pycheck:
+	./hacks/pycheck-parallel || ./hacks/pycheck-fix
