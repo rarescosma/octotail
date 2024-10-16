@@ -36,7 +36,7 @@ extraction, so the overhead is minimal. (well, it's still an empty browser)
 
 Make sure `/usr/bin/chromium` points to a working chromium-based browser.
 
-If unsure, and on Arch Linux:
+This is a good option for Arch Linux users:
 
 ```shell
 paru ungoogled-chromium-bin
@@ -147,44 +147,59 @@ section of the mitmproxy documentation, changing `~/.mitmproxy` with
 
  Usage: octotail [OPTIONS] COMMIT_SHA
 
- Find an active workflow run for the given <COMMIT_SHA> (and optionally --workflow and/or
- --ref-name) and attempt to tail its logs.
- NOTE: the <COMMIT_SHA> has to be of the full 40 characters length.
+ Find an active workflow run for the given COMMIT_SHA (and optionally --workflow and/or --ref-name)
+ and attempt to tail its logs.
+ NOTE: the COMMIT_SHA has to be of the full 40 characters length.
 
- - Arguments --------------------------------------------------------------------------------------
-  *    commit_sha      TEXT  Full commit SHA that triggered the workflow. [default: None]
+-- Arguments ---------------------------------------------------------------------------------------
+  *    commit_sha      TEXT  Full commit SHA that triggered the workflow.
                              [required]
 
- - Options ----------------------------------------------------------------------------------------
-  *  --gh-pat                         TEXT     GitHub personal access token. (for API auth)
-                                               [env var: _GH_PAT]
-                                               [required]
-  *  --gh-user                        TEXT     GitHub username. (for web auth) [env var: _GH_USER]
-                                               [required]
-  *  --gh-pass                        TEXT     GitHub password. (for web auth) [env var: _GH_PASS]
-                                               [required]
-     --gh-otp                         TEXT     GitHub OTP. (for web auth) [env var: _GH_OTP]
-                                               [default: None]
-     --workflow  -w                   TEXT     Only consider workflows with this name.
-     --ref-name  -r                   TEXT     Only consider workflows triggered by this ref.
-                                               Example: 'refs/heads/main'
-     --repo      -R                   TEXT     Use this GitHub repo to look for workflow runs. If
-                                               unspecified, will look for a remote matching
-                                               'git@github.com:<user>/<repo>.git' in the current
-                                               directory.
-                                               Examples: 'user/repo' OR 'org_name/repo'
-     --headless      --no-headless             Run browser in headless mode. [env var: _HEADLESS]
-                                               [default: headless]
-     --port                           INTEGER  Port the proxy will listen on.
-                                               [env var: _PORT]
-                                               [default: (random in range 8100-8500)]
-     --help                                    Show this message and exit.
+-- Authentication ----------------------------------------------------------------------------------
+  *  --gh-pat         TEXT  GitHub personal access token. (for API auth)
+                            [env var: _GH_PAT]
+                            [required]
+  *  --gh-user        TEXT  GitHub username. (for web auth)
+                            [env var: _GH_USER]
+                            [required]
+  *  --gh-pass        TEXT  GitHub password. (for web auth)
+                            [env var: _GH_PASS]
+                            [required]
+     --gh-otp         TEXT  GitHub OTP. (for web auth, if 2FA is on)
+                            [env var: _GH_OTP]
+                            [default: None]
+
+-- Workflow filters --------------------------------------------------------------------------------
+  --workflow  -w      TEXT       Only consider workflows with this name.
+  --ref-name  -r      TEXT       Only consider workflows triggered by this ref. Example:
+                                 refs/heads/main
+  --repo      -R      USER/REPO  Use this GitHub repo to look for workflow runs. If unspecified,
+                                 will look for a remote matching 'git@github.com:user/repo.git' in
+                                 the current directory. Examples: user/repo OR org_name/repo
+
+-- Others ------------------------------------------------------------------------------------------
+  --headless    --no-headless             Run browser in headless mode.
+                                          [env var: _HEADLESS]
+                                          [default: headless]
+  --port                         INTEGER  Port the proxy will listen on.
+                                          [env var: _PORT]
+                                          [default: (random in range 8100-8500)]
+  --help                                  Show this message and exit.
 
 ```
 
 ### Tail after push
 
 A simple use case is tailing a workflow run right after `git push`:
+
+If simply pushing the `HEAD` of the current branch:
+
+```shell
+git push
+octotail $(git rev-parse HEAD)
+```
+
+Or if pushing to a different remote branch:
 
 ```shell
 git push origin main
@@ -196,13 +211,6 @@ Or if pushing a tag:
 ```shell
 git push origin v1.0.42
 octotail $(git rev-parse v1.0.42^{commit}) -r refs/tags/v1.0.42
-```
-
-Or if simply pushing the `HEAD` of the current branch:
-
-```shell
-git push
-octotail $(git rev-parse HEAD)
 ```
 
 ### As a post-receive hook
