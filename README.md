@@ -1,5 +1,12 @@
 # octotail
 
+<p>
+<a href="https://github.com/rarescosma/octotail/actions"><img alt="Actions Status" src="https://github.com/rarescosma/octotail/workflows/test/badge.svg"></a>
+<a href="https://github.com/rarescosma/octotail/blob/main/UNLICENSE"><img alt="License: Unlicense" src="https://img.shields.io/badge/license-Unlicense-blue.svg"></a>
+<a href="https://pypi.org/project/octotail/"><img alt="PyPI" src="https://img.shields.io/pypi/v/octotail"></a>
+<a href="https://github.com/rarescosma/octotail"><img alt="Code style: black" src="https://img.shields.io/badge/code%20style-black-000000.svg"></a>
+</p>
+
 Live tail GitHub Action runs on `git push`. It's cursed.
 
 ![](https://raw.githubusercontent.com/rarescosma/octotail/a9c662e5f669c22c591d93c32cdeca68e1a05aec/var/demo.gif)
