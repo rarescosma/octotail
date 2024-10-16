@@ -4,6 +4,7 @@
 import dataclasses
 import multiprocessing as mp
 import sys
+import time
 from pathlib import Path
 from threading import Event
 from typing import Dict, Union
@@ -18,7 +19,7 @@ from octotail.browser import BrowseRequest, BrowserWatcher, CloseRequest, ExitRe
 from octotail.cli import Opts, entrypoint
 from octotail.fmt import Formatter
 from octotail.gh import JobDone, RunWatcher, WorkflowDone, get_active_run, guess_repo
-from octotail.mitm import ProxyWatcher, WsSub
+from octotail.mitm import MITM_CONFIG_DIR, ProxyWatcher, WsSub
 from octotail.streamer import OutputItem, run_streamer
 from octotail.utils import debug, find_free_port, log
 
@@ -132,6 +133,23 @@ def _main(opts: Opts) -> None:
         _stop.set()
 
     ActorRegistry.stop_all()
+
+
+def generate_cert() -> None:
+    # start the proxy_watcher actor and wait until a cert is generated
+    port = find_free_port()
+    mitm = ProxyWatcher.start(None, port)
+    cert_file = MITM_CONFIG_DIR / "mitmproxy-ca-cert.cer"
+    tries = 0
+    while (not cert_file.exists()) or (not cert_file.stat().st_size):
+        if tries > 25:
+            debug("giving up waiting for mitmproxy to generate a certificate")
+            sys.exit(1)
+        time.sleep(0.2)
+        tries += 1
+
+    log(f"{cert_file}", skip_prefix=True)
+    mitm.stop()
 
 
 if __name__ == "__main__":

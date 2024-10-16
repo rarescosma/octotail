@@ -46,14 +46,16 @@ class ProxyWatcher(ThreadingActor):
     _proxy_ps: multiprocessing.Process
     _q: multiprocessing.Queue
 
-    def __init__(self, mgr: ActorRef, port: int):
+    def __init__(self, mgr: ActorRef | None, port: int):
         super().__init__()
-        self.mgr = mgr
+        if mgr is not None:
+            self.mgr = mgr
+            self._stop_event = mgr.proxy().stop_event.get()
         self.port = port
-        self._stop_event = mgr.proxy().stop_event.get()
 
     def on_start(self) -> None:
         self._q = multiprocessing.Queue()
+        MITM_CONFIG_DIR.mkdir(exist_ok=True, parents=True)
         self._proxy_ps = multiprocessing.Process(
             target=_mitmdump_wrapper, args=(self._q, self.port)
         )
