@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+
+_module="${1:-octotail}"
+
+# clean & sort imports
+echo
+echo ">>>>>> pycln <<<<<<"
+pycln "${_module}"
+echo "-------------------"
+echo
+echo ">>>>>> isort <<<<<<"
+isort -l100 -m3 --tc "${_module}"
+echo "-------------------"
+
+# format
+echo
+echo ">>>>>> black <<<<<<"
+black -l 100 "${_module}"
+echo "-------------------"
+
+# types are good
+echo ">>>>>> mypy <<<<<<<"
+mypy --ignore-missing-imports --disallow-untyped-defs "${_module}"
+echo "-------------------"
+
+# messy code is bad
+echo
+echo ">>>>>> pylint <<<<<"
+pylint "${_module}"
+echo "-------------------"
+
+# out-of-date readme is bad
+echo
+echo ">> update-readme <<"
+./hacks/update-readme
+echo "-------------------"
