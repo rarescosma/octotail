@@ -29,19 +29,45 @@ workers.
 The headless browser tabs are cleaned up immediately after the WebSocket
 extraction, so the overhead is minimal. (well, it's still an empty browser)
 
-## Installation
-
-### Pre-install
+## Prerequisites
 
 - python 3.12
 - a working chromium-based browser under `/usr/bin/chromium`
 
 Make sure `/usr/bin/chromium` points to a working chromium-based browser.
 
-If unsure, and on Arch:
+If unsure, and on Arch Linux:
 
 ```shell
 paru ungoogled-chromium-bin
+```
+
+## Installation
+
+### Via `uvx`
+
+One can simply and hassle-free invoke `octotail` through [uvx][].
+
+First, generate the proxy root certificate:
+
+```shell
+uvx --from=octotail generate-cert
+```
+
+Then, see [Install the generated proxy root certificate](#install-the-generated-proxy-root-certificate)
+for instructions on how to install the generated certificate on your platform.
+
+Finally, simply invoke it via:
+
+```shell
+uvx --from=octotail octotail --help
+```
+
+Or alias it as `octotail`:
+
+```shell
+# change .zshrc to .bashrc, config.fish, etc. if needed
+echo "alias octotail='uvx --from octotail octotail'" >> ~/.zshrc
 ```
 
 ### Pypi package
@@ -51,7 +77,7 @@ mkdir octotail && cd octotail
 python3 -mvenv .venv && source .venv/bin/activate
 pip3 install octotail
 
-# or .bashrc, config.fish, etc.
+# change .zshrc to .bashrc, config.fish, etc.
 echo "alias octotail='$(pwd)/.venv/bin/python3 $(pwd)/.venv/bin/octotail'" >> ~/.zshrc
 ```
 
@@ -226,5 +252,5 @@ git push proxy
 
 [Codecrafters]: https://codecrafters.io/
 [mitmproxy]: https://mitmproxy.org/
-[uv & uvx]: https://github.com/astral-sh/uv
+[uvx]: https://github.com/astral-sh/uv
 ["Installing the mitmproxy CA certificate manually"]: https://docs.mitmproxy.org/stable/concepts-certificates/#installing-the-mitmproxy-ca-certificate-manually
