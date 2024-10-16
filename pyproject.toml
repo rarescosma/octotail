@@ -1,6 +1,6 @@
 [project]
 name = "octotail"
-version = "1.0.8"
+version = "1.0.9"
 description = "Live tail GitHub Actions runs on git push"
 authors = [
     { name = "Rareș Cosma", email = "rares@getbetter.ro" }
