@@ -98,23 +98,6 @@ make
 sudo make install
 ```
 
-### Via git - all manual
-
-Clone the repo:
-
-```shell
-git clone https://github.com/rarescosma/octotail.git
-cd octotail
-```
-
-Make a virtual environment, activate it, and install the package.
-
-```shell
-python3 -m venv .venv
-source .venv/bin/activate
-poetry install --no-dev
-sudo ln -sf $(pwd)/octotail/main.py /usr/local/bin/octotail
-```
 
 > [!IMPORTANT] 
 > ### Post-install
