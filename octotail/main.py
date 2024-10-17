@@ -3,6 +3,7 @@
 """Having your cake and eating it too."""
 import dataclasses
 import multiprocessing as mp
+import os.path
 import sys
 import time
 from threading import Event
@@ -87,18 +88,18 @@ class Manager(ThreadingActor):
 
 
 @entrypoint
-def _main(opts: Opts) -> None:
+def _main(opts: Opts) -> int:
     _stop = Event()
 
     if (repo_id := (opts.repo or guess_repo())) is None:
         log("could not establish repo")
-        sys.exit(1)
+        return 1
 
     gh_client = Github(auth=Auth.Token(opts.gh_pat))
     wf_run = get_active_run(gh_client.get_repo(repo_id), opts)
     if not isinstance(wf_run, WorkflowRun):
         log(f"could not get a matching workflow run: {wf_run}")
-        sys.exit(1)
+        return 1
 
     # find a free port
     if opts.port is None:
@@ -106,7 +107,7 @@ def _main(opts: Opts) -> None:
             opts = dataclasses.replace(opts, port=port)
         else:
             log("giving up finding a free port in the 8100 - 8500 range")
-            sys.exit(1)
+            return 1
 
     debug(f"starting on port {opts.port}")
 
@@ -130,9 +131,10 @@ def _main(opts: Opts) -> None:
         _stop.set()
 
     ActorRegistry.stop_all()
+    return 0
 
 
-def generate_cert() -> None:
+def _generate_cert() -> int:
     # start the proxy_watcher actor and wait until a cert is generated
     port = find_free_port()
     mitm = ProxyWatcher.start(None, port)
@@ -141,13 +143,19 @@ def generate_cert() -> None:
     while (not cert_file.exists()) or (not cert_file.stat().st_size):
         if tries > GENERATE_CERT_TRIES:
             debug("giving up waiting for mitmproxy to generate a certificate")
-            sys.exit(1)
+            return 1
         time.sleep(0.2)
         tries += 1
 
     log(f"{cert_file}", skip_prefix=True)
     mitm.stop()
+    return 0
 
 
 if __name__ == "__main__":
-    _main()
+    _cmd = (
+        _generate_cert
+        if sys.argv and os.path.basename(sys.argv[0]) == "octotail-generate-cert"
+        else _main
+    )
+    sys.exit(_cmd())

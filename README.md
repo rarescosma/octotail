@@ -59,7 +59,7 @@ One can simply and hassle-free invoke `octotail` through [uvx][].
 First, generate the proxy root certificate:
 
 ```shell
-uvx --from=octotail generate-cert
+uvx --from=octotail octotail-generate-cert
 ```
 
 Then, see [Install the generated proxy root certificate](#install-the-generated-proxy-root-certificate)
@@ -87,6 +87,7 @@ pip3 install octotail
 
 # change .zshrc to .bashrc, config.fish, etc.
 echo "alias octotail='$(pwd)/.venv/bin/python3 $(pwd)/.venv/bin/octotail'" >> ~/.zshrc
+echo "alias octotail-generate-cert='$(pwd)/.venv/bin/python3 $(pwd)/.venv/bin/octotail-generate-cert'" >> ~/.zshrc
 ```
 
 ### Via git and make
@@ -98,39 +99,39 @@ make
 sudo make install
 ```
 
+### Post-install
 
 > [!IMPORTANT] 
-> ### Post-install
 >
-> Run `generate-cert` once to generate the proxy root certificate:
+> Run `octotail-generate-cert` once to generate the proxy root certificate:
 > 
 > ```shell
-> generate-cert
+> octotail-generate-cert
 > ```
-> 
-> #### Install the generated proxy root certificate
-> 
-> This step is highly platform-dependent.
-> 
-> ##### On Arch Linux
-> 
-> ```shell
-> sudo trust anchor ~/.local/share/octotail/mitmproxy/mitmproxy-ca-cert.cer
-> ```
-> 
-> #### On macOS
-> 
-> ```shell
-> sudo security add-trusted-cert -d -p ssl -p basic \
->   -k /Library/Keychains/System.keychain \
->   ~/local/.share/octotail/mitmproxy/mitmproxy-ca-cert.pem
-> ```
-> 
-> #### Others
-> 
-> Please refer to the ["Installing the mitmproxy CA certificate manually"][]
-> section of the mitmproxy documentation, changing `~/.mitmproxy` with 
-> `~/.local/share/octotail/mitmproxy` where appropriate.
+ 
+#### Install the generated proxy root certificate
+ 
+This step is highly platform-dependent.
+ 
+##### On Arch Linux
+ 
+```shell
+sudo trust anchor ~/.local/share/octotail/mitmproxy/mitmproxy-ca-cert.cer
+```
+ 
+#### On macOS
+ 
+```shell
+sudo security add-trusted-cert -d -p ssl -p basic \
+  -k /Library/Keychains/System.keychain \
+  ~/local/.share/octotail/mitmproxy/mitmproxy-ca-cert.pem
+```
+ 
+#### Others
+ 
+Please refer to the ["Installing the mitmproxy CA certificate manually"][]
+section of the mitmproxy documentation, changing `~/.mitmproxy` with 
+`~/.local/share/octotail/mitmproxy` where appropriate.
 
 ## Usage
 
