@@ -1,6 +1,6 @@
 #!/usr/bin/env -S zsh -li
 
-_GH_USER="github-user-here"
+OCTOTAIL_GH_USER="github-user-here"
 _GH_PASS_CMD="zenity --entry --hide-text --title='GitHub' --text='Enter password:'"
 _GH_OTP_CMD="zenity --entry --hide-text --title='GitHub' --text='Enter OTP token:'"
 _GH_PAT_CMD="zenity --entry --hide-text --title='GitHub' --text='Enter PAT:'"
@@ -24,7 +24,7 @@ echo "ref_name: $REF_NAME"
 export PYTHONUNBUFFERED=1
 export _HEADLESS=1
 
-export _GH_PASS="$(eval $_GH_PASS_CMD)"
-export _GH_OTP="$(eval $_GH_OTP_CMD)"
-export _GH_PAT="$(eval $_GH_PAT_CMD)"
+export OCTOTAIL_GH_PASS="$(eval $_GH_PASS_CMD)"
+export OCTOTAIL_GH_OTP="$(eval $_GH_OTP_CMD)"
+export OCTOTAIL_GH_PAT="$(eval $_GH_PAT_CMD)"
 octotail $COMMIT --ref-name $REF_NAME --gh-user "$_GH_USER"

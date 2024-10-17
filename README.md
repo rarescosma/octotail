@@ -166,16 +166,16 @@ sudo ln -sf $(pwd)/octotail/main.py /usr/local/bin/octotail
 
 -- Authentication ----------------------------------------------------------------------------------
   *  --gh-pat         TEXT  GitHub personal access token. (for API auth)
-                            [env var: _GH_PAT]
+                            [env var: OCTOTAIL_GH_PAT]
                             [required]
   *  --gh-user        TEXT  GitHub username. (for web auth)
-                            [env var: _GH_USER]
+                            [env var: OCTOTAIL_GH_USER]
                             [required]
   *  --gh-pass        TEXT  GitHub password. (for web auth)
-                            [env var: _GH_PASS]
+                            [env var: OCTOTAIL_GH_PASS]
                             [required]
      --gh-otp         TEXT  GitHub OTP. (for web auth, if 2FA is on)
-                            [env var: _GH_OTP]
+                            [env var: OCTOTAIL_GH_OTP]
                             [default: None]
 
 -- Workflow filters --------------------------------------------------------------------------------
@@ -188,10 +188,10 @@ sudo ln -sf $(pwd)/octotail/main.py /usr/local/bin/octotail
 
 -- Others ------------------------------------------------------------------------------------------
   --headless    --no-headless             Run browser in headless mode.
-                                          [env var: _HEADLESS]
+                                          [env var: OCTOTAIL_HEADLESS]
                                           [default: headless]
   --port                         INTEGER  Port the proxy will listen on.
-                                          [env var: _PORT]
+                                          [env var: OCTOTAIL_PROXY_PORT]
                                           [default: (random in range 8100-8500)]
   --help                                  Show this message and exit.
 

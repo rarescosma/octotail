@@ -61,7 +61,7 @@ class Opts:
     gh_pat: t.Annotated[
         str,
         Option(
-            envvar="_GH_PAT",
+            envvar="OCTOTAIL_GH_PAT",
             help="GitHub personal access token. (for API auth)",
             show_default=False,
             rich_help_panel="Authentication",
@@ -70,7 +70,7 @@ class Opts:
     gh_user: t.Annotated[
         str,
         Option(
-            envvar="_GH_USER",
+            envvar="OCTOTAIL_GH_USER",
             help="GitHub username. (for web auth)",
             show_default=False,
             rich_help_panel="Authentication",
@@ -79,7 +79,7 @@ class Opts:
     gh_pass: t.Annotated[
         str,
         Option(
-            envvar="_GH_PASS",
+            envvar="OCTOTAIL_GH_PASS",
             help="GitHub password. (for web auth)",
             show_default=False,
             rich_help_panel="Authentication",
@@ -88,7 +88,7 @@ class Opts:
     gh_otp: t.Annotated[
         str | None,
         Option(
-            envvar="_GH_OTP",
+            envvar="OCTOTAIL_GH_OTP",
             help="GitHub OTP. (for web auth, if 2FA is on)",
             rich_help_panel="Authentication",
         ),
@@ -127,12 +127,16 @@ class Opts:
     ] = None
     headless: t.Annotated[
         bool,
-        Option(envvar="_HEADLESS", help="Run browser in headless mode.", rich_help_panel="Others"),
+        Option(
+            envvar="OCTOTAIL_HEADLESS",
+            help="Run browser in headless mode.",
+            rich_help_panel="Others",
+        ),
     ] = True
     port: t.Annotated[
         int | None,
         Option(
-            envvar="_PORT",
+            envvar="OCTOTAIL_PROXY_PORT",
             help="Port the proxy will listen on.",
             show_default="random in range 8100-8500",
             rich_help_panel="Others",
