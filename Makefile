@@ -1,3 +1,5 @@
+PREFIX ?= /usr/local
+
 default: .venv/freeze
 
 .venv/freeze:
@@ -6,7 +8,7 @@ default: .venv/freeze
 
 install:
 	chmod 755 $(PWD)/octotail/main.py
-	ln -sf $(PWD)/octotail/main.py /usr/local/bin/octotail
+	ln -sf $(PWD)/octotail/main.py $(PREFIX)/bin/octotail
 
 bump:
 	bumpversion patch --verbose pyproject.toml uv.lock --commit --sign-tags --tag
