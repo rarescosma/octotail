@@ -9,19 +9,19 @@ from threading import Event
 from pykka import ActorRegistry
 from returns.result import Failure, Success
 
-from octotail.browser import BrowseRequest, BrowserWatcher
 from octotail.cli import Opts, entrypoint
-from octotail.fmt import Formatter
-from octotail.gh import RunWatcher, get_active_run
-from octotail.git import guess_github_repo
-from octotail.manager import Manager
-from octotail.mitm import ProxyWatcher
-from octotail.streamer import OutputItem
 from octotail.utils import debug, find_free_port, log
 
 
 @entrypoint
 def _main(opts: Opts) -> int:
+    from octotail.browser import BrowseRequest, BrowserWatcher
+    from octotail.fmt import Formatter
+    from octotail.gh import RunWatcher, get_active_run
+    from octotail.git import guess_github_repo
+    from octotail.manager import Manager
+    from octotail.mitm import ProxyWatcher
+    from octotail.streamer import OutputItem
 
     def _repo_id() -> str | None:
         match opts.repo or guess_github_repo():
