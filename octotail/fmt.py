@@ -84,6 +84,10 @@ def _decorate_line(line: str, job_name: str, _colored: t.Callable) -> list[str]:
         sep = _colored("⎯" * (80 - len(f"remote: [{job_name}]: ") - len(unprefixed) - 6))
         return ["", f"{_colored('⎯⎯')}  {rem}  {sep}"]
 
+    if line.startswith("##[error]"):
+        unprefixed = line.removeprefix("##[error]")
+        return ["", colored(f"Error: {unprefixed}", "red", attrs=["bold"], force_color=True), ""]
+
     if line.startswith("##[endgroup]"):
         sep = _colored("⎯" * (80 - len(f"remote: [{job_name}]: ")))
         return [sep, ""]
