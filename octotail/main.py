@@ -6,15 +6,15 @@ import multiprocessing as mp
 import sys
 from threading import Event
 
-from github import Auth, Github
 from github.WorkflowJob import WorkflowJob
-from github.WorkflowRun import WorkflowRun
 from pykka import ActorRegistry, ThreadingActor
+from returns.result import Failure, Success
 
 from octotail.browser import BrowseRequest, BrowserWatcher, CloseRequest, ExitRequest, VisitRequest
 from octotail.cli import Opts, entrypoint
 from octotail.fmt import Formatter
-from octotail.gh import JobDone, RunWatcher, WorkflowDone, get_active_run, guess_repo
+from octotail.gh import JobDone, RunWatcher, WorkflowDone, get_active_run
+from octotail.git import guess_github_repo
 from octotail.mitm import ProxyWatcher, WsSub
 from octotail.streamer import OutputItem, run_streamer
 from octotail.utils import debug, find_free_port, log
@@ -87,14 +87,23 @@ class Manager(ThreadingActor):
 def _main(opts: Opts) -> int:
     _stop = Event()
 
-    if (repo_id := (opts.repo or guess_repo())) is None:
-        log("could not establish repo")
+    def _repo_id() -> str | None:
+        match opts.repo or guess_github_repo():
+            case from_opts if isinstance(from_opts, str):
+                return from_opts
+            case Success(from_remote):
+                return from_remote
+            case Failure(e):
+                debug(f"failed to process git remotes: {e}")
+        return None
+
+    if (repo_id := _repo_id()) is None:
+        log("fatal: could not guess repo from remotes and no --repo/-R was passed")
         return 1
 
-    gh_client = Github(auth=Auth.Token(opts.gh_pat))
-    wf_run = get_active_run(gh_client.get_repo(repo_id), opts)
-    if not isinstance(wf_run, WorkflowRun):
-        log(f"could not get a matching workflow run: {wf_run}")
+    wf_run = get_active_run(repo_id, opts)
+    if wf_run is None:
+        log("fatal: could not find an active run")
         return 1
 
     # find a free port

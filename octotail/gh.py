@@ -1,11 +1,10 @@
 """GitHub actor."""
 
-import re
 import typing as t
 from contextlib import suppress
-from subprocess import CalledProcessError, check_output
 from threading import Event
 
+from github import Auth, Github
 from github.Repository import Repository
 from github.WorkflowJob import WorkflowJob
 from github.WorkflowRun import WorkflowRun
@@ -83,7 +82,7 @@ class RunWatcher(ThreadingActor):
 
 
 @retries(10, 0.5)
-def get_active_run(repo: Repository, opts: Opts) -> ResultE[WorkflowRun] | Retry:
+def _get_active_run(repo: Repository, opts: Opts) -> ResultE[WorkflowRun] | Retry:
     with suppress(Exception):
         runs = repo.get_workflow_runs(head_sha=opts.commit_sha)
         if runs.totalCount == 0:
@@ -112,22 +111,10 @@ def get_active_run(repo: Repository, opts: Opts) -> ResultE[WorkflowRun] | Retry
     return Retry()
 
 
-def guess_repo() -> str | None:
-    try:
-        remotes = check_output(["git", "remote"]).decode().strip().splitlines()
-    except CalledProcessError as e:
-        log(f"fatal: couldn't list git remotes: {e}")
+def get_active_run(repo_id: str, opts: Opts) -> WorkflowRun | None:
+    gh_client = Github(auth=Auth.Token(opts.gh_pat))
+    wf_run = _get_active_run(gh_client.get_repo(repo_id), opts)
+    if not isinstance(wf_run, Success):
+        log(f"could not get a matching workflow run: {wf_run}")
         return None
-    repos = list(filter(None, map(_guess_repo, remotes)))
-    if len(repos) > 1:
-        log("fatal: found multiple remotes pointing to GitHub")
-        return None
-    return repos[0] if repos else None
-
-
-def _guess_repo(remote: str) -> str | None:
-    with suppress(Exception):
-        origin = check_output(f"git remote get-url {remote}".split()).decode().strip()
-        if (match := re.search(r"^git@github.com:([^.]+).git$", origin)) is not None:
-            return match.group(1)
-    return None
+    return wf_run.unwrap()
