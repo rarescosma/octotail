@@ -4,9 +4,9 @@ import asyncio as aio
 import json
 import multiprocessing as mp
 import typing as t
-from contextlib import suppress
 
 import websockets.client
+from returns.result import Success, safe
 from websockets.exceptions import ConnectionClosedError
 
 from octotail.browser import RANDOM_UA
@@ -58,9 +58,9 @@ async def _stream_it(ws_sub: WsSub, queue: mp.Queue) -> None:
         try:
             await websocket.send(ws_sub.subs)
             async for msg in websocket:
-                lines = _extract_lines(msg)
-                if lines:
-                    queue.put(OutputItem(job_name, lines))
+                _extract_lines(msg).apply(
+                    Success(lambda _lines: queue.put(OutputItem(job_name, _lines)))
+                )
         except aio.CancelledError:
             log("cancelled")
             if websocket:
@@ -71,8 +71,7 @@ async def _stream_it(ws_sub: WsSub, queue: mp.Queue) -> None:
             queue.put(WebsocketClosed())
 
 
+@safe
 def _extract_lines(msg: str | bytes) -> list[str]:
     _msg = msg.decode() if isinstance(msg, bytes) else msg
-    with suppress(Exception):
-        return [line_obj["line"] for line_obj in json.loads(_msg)["data"]["data"]["lines"]]
-    return []
+    return [line_obj["line"] for line_obj in json.loads(_msg)["data"]["data"]["lines"]]
