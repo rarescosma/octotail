@@ -22,7 +22,7 @@ echo "-------------------"
 # ruff is good
 echo
 echo ">>>>>> ruff <<<<<<<"
-ruff check "${_module}" --fix
+ruff check "${_module}"
 echo "-------------------"
 
 # types are good
