@@ -10,6 +10,7 @@ from github.WorkflowJob import WorkflowJob
 from github.WorkflowRun import WorkflowRun
 from pykka import ActorRef, ThreadingActor
 from returns.result import Failure, ResultE, Success
+from urllib3.exceptions import HTTPError
 
 from octotail.cli import Opts
 from octotail.utils import Retry, debug, log, retries
@@ -53,23 +54,27 @@ class RunWatcher(ThreadingActor):
 
     def watch(self) -> None:
         while not self.stop_event.is_set():
-            self.wf_run.update()
+            try:
+                self.wf_run.update()
 
-            with suppress(Exception):
                 for job in self.wf_run.jobs():
                     if job.conclusion and job.id not in self._concluded_jobs:
                         if not self._tell(JobDone(job.id, job.name, job.conclusion)):
-                            return
+                            break
                         self._concluded_jobs.add(job.id)
                         continue
                     if job.id not in self._new_jobs.union(self._concluded_jobs):
                         if not self._tell(job):
-                            return
+                            break
                         self._new_jobs.add(job.id)
 
-            if self.wf_run.conclusion:
-                self._tell(WorkflowDone(self.wf_run.conclusion))
-                return
+                if self.wf_run.conclusion:
+                    self._tell(WorkflowDone(self.wf_run.conclusion))
+                    break
+            except (OSError, HTTPError) as e:
+                log(f"fatal error during workflow update: {e}")
+                self.mgr.stop()
+                break
 
             self.stop_event.wait(POLL_INTERVAL)
         debug("exiting")
