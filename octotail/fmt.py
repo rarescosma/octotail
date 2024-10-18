@@ -8,11 +8,11 @@ from contextlib import suppress
 from functools import partial
 from queue import Empty
 
-from pykka import ThreadingActor
+from pykka import ActorRef, ThreadingActor
 from termcolor import colored
 from termcolor._types import Color
 
-from octotail.streamer import OutputItem
+from octotail.streamer import OutputItem, WebsocketClosed
 from octotail.utils import debug, flatmap, remove_consecutive_falsy
 
 WHEEL: list[Color] = [
@@ -27,12 +27,14 @@ WHEEL: list[Color] = [
 class Formatter(ThreadingActor):
     """The output formatting actor."""
 
+    mgr: ActorRef
     queue: mp.JoinableQueue
     _wheel_idx: int
     _color_map: dict[str, int]
 
-    def __init__(self, queue: mp.JoinableQueue):
+    def __init__(self, mgr: ActorRef, queue: mp.JoinableQueue):
         super().__init__()
+        self.mgr = mgr
         self.queue = queue
         self._wheel_idx = 0
         self._color_map = {}
@@ -52,9 +54,14 @@ class Formatter(ThreadingActor):
             with suppress(Empty):
                 item = self.queue.get(timeout=2)
                 self.queue.task_done()
-                if item is None:
-                    break
-                print("\n".join(self._handle_item(item)))
+                match item:
+                    case None:
+                        break
+                    case OutputItem():
+                        print("\n".join(self._handle_item(item)))
+                    case WebsocketClosed():
+                        self.mgr.stop()
+                        break
         debug("exiting")
 
     def _handle_item(self, item: OutputItem) -> t.Generator[str, None, None]:

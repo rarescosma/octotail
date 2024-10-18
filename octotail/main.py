@@ -21,7 +21,7 @@ def _main(opts: Opts) -> int:
     from octotail.git import guess_github_repo
     from octotail.manager import Manager
     from octotail.mitm import ProxyWatcher
-    from octotail.streamer import OutputItem
+    from octotail.streamer import OutputItem, WebsocketClosed
 
     def _repo_id() -> str | None:
         match opts.repo or guess_github_repo():
@@ -55,13 +55,13 @@ def _main(opts: Opts) -> int:
 
     # pylint: disable=E1136
     browser_inbox: mp.Queue[BrowseRequest] = mp.Queue()
-    output_queue: mp.JoinableQueue[OutputItem | None] = mp.JoinableQueue()
+    output_queue: mp.JoinableQueue[OutputItem | WebsocketClosed | None] = mp.JoinableQueue()
     manager = Manager.start(browser_inbox, output_queue, _stop)
 
     run_watcher = RunWatcher.start(manager, wf_run)
     browser_watcher = BrowserWatcher.start(manager, opts, browser_inbox)
     proxy_watcher = ProxyWatcher.start(manager, opts.port)
-    formatter = Formatter.start(output_queue)
+    formatter = Formatter.start(manager, output_queue)
 
     try:
         run_watcher.proxy().watch().join(

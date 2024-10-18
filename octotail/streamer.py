@@ -7,6 +7,7 @@ import typing as t
 from contextlib import suppress
 
 import websockets.client
+from websockets.exceptions import ConnectionClosedError
 
 from octotail.browser import RANDOM_UA
 from octotail.mitm import WsSub
@@ -28,6 +29,10 @@ class OutputItem(t.NamedTuple):
 
     job_name: str
     lines: list[str]
+
+
+class WebsocketClosed:
+    """Indicates the closure of a websocket."""
 
 
 def run_streamer(ws_sub: WsSub, queue: mp.Queue) -> mp.Process:
@@ -61,6 +66,9 @@ async def _stream_it(ws_sub: WsSub, queue: mp.Queue) -> None:
             if websocket:
                 await websocket.close()
             return
+        except ConnectionClosedError as e:
+            log(f"fatal error during websockets connection: {e}")
+            queue.put(WebsocketClosed())
 
 
 def _extract_lines(msg: str | bytes) -> list[str]:
