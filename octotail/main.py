@@ -7,6 +7,7 @@ import sys
 from threading import Event
 
 from pykka import ActorRegistry
+from returns.pipeline import is_successful
 from returns.result import Failure, Success
 
 from octotail.cli import Opts, entrypoint
@@ -38,8 +39,8 @@ def _main(opts: Opts) -> int:
         return 1
 
     wf_run = get_active_run(repo_id, opts)
-    if wf_run is None:
-        log("fatal: could not find an active run")
+    if not is_successful(wf_run):
+        log(f"fatal: could not find an active run: {wf_run.failure()}")
         return 1
 
     # find a free port
@@ -58,7 +59,7 @@ def _main(opts: Opts) -> int:
     output_queue: mp.JoinableQueue[OutputItem | WebsocketClosed | None] = mp.JoinableQueue()
     manager = Manager.start(browser_inbox, output_queue, _stop)
 
-    run_watcher = RunWatcher.start(manager, wf_run)
+    run_watcher = RunWatcher.start(manager, wf_run.unwrap())
     browser_watcher = BrowserWatcher.start(manager, opts, browser_inbox)
     proxy_watcher = ProxyWatcher.start(manager, opts.port)
     formatter = Formatter.start(manager, output_queue)
