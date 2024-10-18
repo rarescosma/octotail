@@ -47,9 +47,8 @@ def _main(opts: Opts) -> int:
         if (port := find_free_port()) is not None:
             opts = dataclasses.replace(opts, port=port)
         else:
-            log("giving up finding a free port in the 8100 - 8500 range")
+            log("fatal: giving up finding a free port in the 8100 - 8500 range")
             return 1
-
     debug(f"starting on port {opts.port}")
 
     _stop = Event()
