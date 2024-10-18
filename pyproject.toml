@@ -26,6 +26,7 @@ dependencies = [
   "pyppeteer == 2.0.0",
   "pyppeteer-stealth == 2.7.4",
   "pyxdg == 0.28",
+  "returns[compatible-mypy]>=0.21.0",
   "rich == 13.9.2",
   "termcolor == 2.5.0",
   "typer-slim == 0.12.5",
@@ -51,6 +52,7 @@ dev-dependencies = [
   "ptyprocess == 0.7.0",
   "pycln == 2.4.0",
   "pylint == 3.3.1",
+  "returns[compatible-mypy]>=0.21.0",
   "ruff>=0.6.9",
   "vulture == 2.13",
 ]

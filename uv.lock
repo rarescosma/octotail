@@ -650,6 +650,7 @@ dependencies = [
     { name = "pyppeteer" },
     { name = "pyppeteer-stealth" },
     { name = "pyxdg" },
+    { name = "returns", extra = ["compatible-mypy"] },
     { name = "rich" },
     { name = "termcolor" },
     { name = "typer-slim" },
@@ -665,6 +666,7 @@ dev = [
     { name = "ptyprocess" },
     { name = "pycln" },
     { name = "pylint" },
+    { name = "returns", extra = ["compatible-mypy"] },
     { name = "ruff" },
     { name = "vulture" },
 ]
@@ -678,6 +680,7 @@ requires-dist = [
     { name = "pyppeteer", specifier = "==2.0.0" },
     { name = "pyppeteer-stealth", specifier = "==2.7.4" },
     { name = "pyxdg", specifier = "==0.28" },
+    { name = "returns", extras = ["compatible-mypy"], specifier = ">=0.21.0" },
     { name = "rich", specifier = "==13.9.2" },
     { name = "termcolor", specifier = "==2.5.0" },
     { name = "typer-slim", specifier = "==0.12.5" },
@@ -693,6 +696,7 @@ dev = [
     { name = "ptyprocess", specifier = "==0.7.0" },
     { name = "pycln", specifier = "==2.4.0" },
     { name = "pylint", specifier = "==3.3.1" },
+    { name = "returns", extras = ["compatible-mypy"], specifier = ">=0.21.0" },
     { name = "ruff", specifier = ">=0.6.9" },
     { name = "vulture", specifier = "==2.13" },
 ]
@@ -1033,6 +1037,23 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/63/70/2bf7780ad2d390a8d301ad0b550f1581eadbd9a20f896afe06353c2a2913/requests-2.32.3.tar.gz", hash = "sha256:55365417734eb18255590a9ff9eb97e9e1da868d4ccd6402399eaf68af20a760", size = 131218 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/f9/9b/335f9764261e915ed497fcdeb11df5dfd6f7bf257d4a6a2a686d80da4d54/requests-2.32.3-py3-none-any.whl", hash = "sha256:70761cfe03c773ceb22aa2f671b4757976145175cdfca038c02654d061d6dcc6", size = 64928 },
+]
+
+[[package]]
+name = "returns"
+version = "0.21.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/83/78/26c8623a46e3e53923b8a442b0c81bda630de39d75f67aa47c7f223d8a1a/returns-0.21.0.tar.gz", hash = "sha256:56e743fb6f80bd83f8a0d31cb2d08b1e30f4e70c9ee9a5d89e400c5217166ef5", size = 104721 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c2/23/29d0e51d712b54c60513c4aebd969c9c6a188e0044d6a8940592effb210b/returns-0.21.0-py3-none-any.whl", hash = "sha256:5e90e14e76fc88d029c3c95a420077eab7fec25b3dbee48e6a7b5e06d6c39b97", size = 154533 },
+]
+
+[package.optional-dependencies]
+compatible-mypy = [
+    { name = "mypy" },
 ]
 
 [[package]]

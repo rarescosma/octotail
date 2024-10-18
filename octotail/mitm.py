@@ -14,9 +14,10 @@ from threading import Event
 
 from mitmproxy.tools.main import mitmdump
 from pykka import ActorRef, ThreadingActor
+from returns.result import Result, Success
 from xdg.BaseDirectory import xdg_data_home
 
-from octotail.utils import Ok, Result, Retry, debug, is_port_open, retries
+from octotail.utils import Retry, debug, is_port_open, retries
 
 MITM_CONFIG_DIR = Path(xdg_data_home) / "octotail" / "mitmproxy"
 MARKERS = Namespace(
@@ -115,9 +116,9 @@ def _mitmdump_wrapper(q: multiprocessing.Queue, port: int) -> None:
 
 
 @retries(50, 0.2)
-def _check_liveness(proxy_ps: multiprocessing.Process, port: int) -> Result[bool] | Retry:
+def _check_liveness(proxy_ps: multiprocessing.Process, port: int) -> Result[bool, None] | Retry:
     if not is_port_open(port):
-        return Ok(True)
+        return Success(True)
     if not proxy_ps.is_alive():
-        return Ok(False)
+        return Success(False)
     return Retry()

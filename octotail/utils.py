@@ -9,6 +9,8 @@ import time
 import typing as t
 from pathlib import Path
 
+from returns.result import Failure, Result, Success
+
 DEBUG = os.getenv("DEBUG") not in ["0", "false", "False", None]
 FIND_FREE_PORT_TRIES = 100
 
@@ -19,15 +21,6 @@ T = t.TypeVar("T")
 
 class Retry:
     """Retry variant."""
-
-
-class Ok(t.NamedTuple, t.Generic[T]):
-    """Success variant."""
-
-    result: T
-
-
-type Result[T] = Ok[T] | RuntimeError | Retry
 
 
 def flatmap(f: t.Callable[[A], t.Iterable[B]], xs: t.Iterable[A]) -> t.Iterable[B]:
@@ -67,14 +60,14 @@ def retries[
         def wrapped(*args: P.args, **kwargs: P.kwargs) -> Result:
             for _ in range(num_retries):
                 match fn(*args, **kwargs):
-                    case Ok(x):
-                        return x
+                    case Success() as s:
+                        return s
                     case Retry():
                         time.sleep(sleep_time)
                         continue
-                    case RuntimeError() as e:
-                        return e
-            return RuntimeError(f"retries exceeded in '{fn.__name__}'")
+                    case Failure() as f:
+                        return f
+            return Failure(RuntimeError(f"retries exceeded in '{fn.__name__}'"))
 
         return wrapped
 

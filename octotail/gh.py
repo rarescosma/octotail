@@ -10,9 +10,10 @@ from github.Repository import Repository
 from github.WorkflowJob import WorkflowJob
 from github.WorkflowRun import WorkflowRun
 from pykka import ActorRef, ThreadingActor
+from returns.result import Failure, ResultE, Success
 
 from octotail.cli import Opts
-from octotail.utils import Ok, Result, Retry, debug, log, retries
+from octotail.utils import Retry, debug, log, retries
 
 VALID_STATI = ["queued", "in_progress", "requested", "waiting", "action_required"]
 POLL_INTERVAL = 2
@@ -82,7 +83,7 @@ class RunWatcher(ThreadingActor):
 
 
 @retries(10, 0.5)
-def get_active_run(repo: Repository, opts: Opts) -> Result[WorkflowRun] | Retry:
+def get_active_run(repo: Repository, opts: Opts) -> ResultE[WorkflowRun] | Retry:
     with suppress(Exception):
         runs = repo.get_workflow_runs(head_sha=opts.commit_sha)
         if runs.totalCount == 0:
@@ -104,9 +105,9 @@ def get_active_run(repo: Repository, opts: Opts) -> Result[WorkflowRun] | Retry:
                 log(f"\n\t{run.html_url}", skip_prefix=True)
             log("", skip_prefix=True)
             log("try narrowing down by workflow name (--workflow) or ref name (--ref-name)")
-            return RuntimeError("cannot disambiguate")
+            return Failure(RuntimeError("cannot disambiguate"))
 
-        return Ok(runs[0])
+        return Success(runs[0])
 
     return Retry()
 
