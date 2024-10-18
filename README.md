@@ -59,7 +59,7 @@ One can simply and hassle-free invoke `octotail` through [uvx][].
 First, generate the proxy root certificate:
 
 ```shell
-uvx --from=octotail octotail-generate-cert
+uvx --from=octotail octotailx generate-cert
 ```
 
 Then, see [Install the generated proxy root certificate](#install-the-generated-proxy-root-certificate)
@@ -68,7 +68,7 @@ for instructions on how to install the generated certificate on your platform.
 Finally, simply invoke it via:
 
 ```shell
-uvx --from=octotail octotail --help
+uvx --from=octotail octotail
 ```
 
 Or alias it as `octotail`:
@@ -87,7 +87,7 @@ pip3 install octotail
 
 # change .zshrc to .bashrc, config.fish, etc.
 echo "alias octotail='$(pwd)/.venv/bin/python3 $(pwd)/.venv/bin/octotail'" >> ~/.zshrc
-echo "alias octotail-generate-cert='$(pwd)/.venv/bin/python3 $(pwd)/.venv/bin/octotail-generate-cert'" >> ~/.zshrc
+echo "alias octotailx='$(pwd)/.venv/bin/python3 $(pwd)/.venv/bin/octotailx'" >> ~/.zshrc
 ```
 
 ### Via git and make
@@ -103,10 +103,10 @@ sudo make install
 
 > [!IMPORTANT] 
 >
-> Run `octotail-generate-cert` once to generate the proxy root certificate:
+> Run `octotailx generate-cert` once to generate the proxy root certificate:
 > 
 > ```shell
-> octotail-generate-cert
+> octotailx generate-cert
 > ```
  
 #### Install the generated proxy root certificate

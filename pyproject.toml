@@ -35,7 +35,7 @@ dependencies = [
 
 [project.scripts]
 octotail = "octotail.main:_main"
-octotail-generate-cert = "octotail.main:_generate_cert"
+octotailx = "octotail.x:_main"
 
 [project.urls]
 Documentation = "https://github.com/rarescosma/octotail#readme"

@@ -3,9 +3,7 @@
 """Having your cake and eating it too."""
 import dataclasses
 import multiprocessing as mp
-import os.path
 import sys
-import time
 from threading import Event
 
 from github import Auth, Github
@@ -17,11 +15,9 @@ from octotail.browser import BrowseRequest, BrowserWatcher, CloseRequest, ExitRe
 from octotail.cli import Opts, entrypoint
 from octotail.fmt import Formatter
 from octotail.gh import JobDone, RunWatcher, WorkflowDone, get_active_run, guess_repo
-from octotail.mitm import MITM_CONFIG_DIR, ProxyWatcher, WsSub
+from octotail.mitm import ProxyWatcher, WsSub
 from octotail.streamer import OutputItem, run_streamer
 from octotail.utils import debug, find_free_port, log
-
-GENERATE_CERT_TRIES = 25
 
 type MgrMessage = WorkflowJob | WsSub | JobDone | WorkflowDone
 
@@ -134,28 +130,5 @@ def _main(opts: Opts) -> int:
     return 0
 
 
-def _generate_cert() -> int:
-    # start the proxy_watcher actor and wait until a cert is generated
-    port = find_free_port()
-    mitm = ProxyWatcher.start(None, port)
-    cert_file = MITM_CONFIG_DIR / "mitmproxy-ca-cert.cer"
-    tries = 0
-    while (not cert_file.exists()) or (not cert_file.stat().st_size):
-        if tries > GENERATE_CERT_TRIES:
-            debug("giving up waiting for mitmproxy to generate a certificate")
-            return 1
-        time.sleep(0.2)
-        tries += 1
-
-    log(f"{cert_file}", skip_prefix=True)
-    mitm.stop()
-    return 0
-
-
 if __name__ == "__main__":
-    _cmd = (
-        _generate_cert
-        if sys.argv and os.path.basename(sys.argv[0]) == "octotail-generate-cert"
-        else _main
-    )
-    sys.exit(_cmd())
+    sys.exit(_main())
