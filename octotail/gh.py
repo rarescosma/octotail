@@ -122,7 +122,7 @@ def _get_active_run(repo: Repository, opts: Opts) -> ResultE[WorkflowRun] | Retr
         log("try narrowing down by workflow name (--workflow) or ref name (--ref-name)")
         return Failure(RuntimeError("cannot disambiguate"))
 
-    return Success(runs[0])
+    return Success(_runs[0])
 
 
 @impure_safe
