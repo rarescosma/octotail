@@ -91,7 +91,7 @@ def generate_cert() -> None:
 
 
 @app.command()
-def install_proxy_remote() -> None:  # noqa: PLR0912
+def install_proxy_remote() -> None:  # noqa: PLR0912, PLR0915
     """Install an octotail proxy remote for the current git repository."""
     repo_dir_res = get_repo_dir()
     if not is_successful(repo_dir_res):
@@ -149,22 +149,27 @@ def install_proxy_remote() -> None:  # noqa: PLR0912
         rprint(f"fatal: could not add the proxy remote: {add_remote.failure()}")
         sys.exit(1)
 
+    def _inject_default(env_var: str) -> dict:
+        val = os.getenv(env_var)
+        if val is None:
+            return {}
+        return {"default": val}
+
     gh_user = NonEmptyPrompt.ask(
-        "Enter your github.com username",
-        default=os.getenv("OCTOTAIL_GH_USER", ""),
+        "Enter your github.com username", **_inject_default("OCTOTAIL_GH_USER")
     )
     gh_pass_cmd = NonEmptyPrompt.ask(
         "Enter [bold]a command[/bold] that will output your GitHub password",
-        default=os.getenv("OCTOTAIL_GH_PASS_CMD", ""),
+        **_inject_default("OCTOTAIL_GH_PASS_CMD"),
     )
     gh_otp_cmd = Prompt.ask(
         "If using 2FA, enter [bold]a command[/bold] that will output the OTP token."
         " Leave blank if not using 2FA",
-        default=os.getenv("OCTOTAIL_GH_OTP_CMD", ""),
+        **_inject_default("OCTOTAIL_GH_OTP_CMD"),
     )
     gh_pat_cmd = NonEmptyPrompt.ask(
         "Enter [bold]a command[/bold] that will output a GitHub personal access token",
-        default=os.getenv("OCTOTAIL_GH_PAT_CMD", ""),
+        **_inject_default("OCTOTAIL_GH_PAT_CMD"),
     )
 
     hook_path = proxy_repo_path / "hooks" / "post-receive"
