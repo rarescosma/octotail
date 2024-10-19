@@ -658,7 +658,7 @@ wheels = [
 
 [[package]]
 name = "octotail"
-version = "1.0.11"
+version = "1.0.12"
 source = { editable = "." }
 dependencies = [
     { name = "fake-useragent" },
