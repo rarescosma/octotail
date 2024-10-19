@@ -130,7 +130,7 @@ def install_proxy_remote() -> None:  # noqa: PLR0912, PLR0915
     proxy_repo_path = PROXY_REPOS / repo_dir.name
 
     if proxy_repo_path.exists():
-        rprint(f"fatal: '{proxy_repo_path} already exists")
+        rprint(f"fatal: {proxy_repo_path} already exists")
         sys.exit(1)
 
     rprint(
@@ -142,7 +142,7 @@ def install_proxy_remote() -> None:  # noqa: PLR0912, PLR0915
         rprint(f"fatal: clone failed: {clone_result.failure()}")
         sys.exit(1)
 
-    rprint(f"[green]Clone successful. Adding '{proxy_repo_path}' as the 'proxy' remote.[/green]")
+    rprint(f"[green]Clone successful. Adding {proxy_repo_path} as the 'proxy' remote.[/green]")
 
     add_remote = git(f"remote add proxy {proxy_repo_path}")
     if not is_successful(add_remote):
