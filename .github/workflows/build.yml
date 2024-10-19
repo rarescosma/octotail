@@ -53,6 +53,11 @@ jobs:
         run: |
           source .venv/bin/activate
           ./hacks/pycheck-parallel
+      - name: Run the entrypoints
+        run: |
+          source .venv/bin/activate
+          octotail --help
+          octotailx --help
 
   publish-wheels:
     name: publish-wheels
