@@ -140,12 +140,14 @@ def install_proxy_remote() -> None:  # noqa: PLR0912
     clone_result = git(f"clone --mirror {github_remote.url} {proxy_repo_path}")
     if not is_successful(clone_result):
         rprint(f"fatal: clone failed: {clone_result.failure()}")
+        sys.exit(1)
 
     rprint(f"[green]Clone successful. Adding '{proxy_repo_path}' as the 'proxy' remote.[/green]")
 
     add_remote = git(f"remote add proxy {proxy_repo_path}")
     if not is_successful(add_remote):
         rprint(f"fatal: could not add the proxy remote: {add_remote.failure()}")
+        sys.exit(1)
 
     gh_user = NonEmptyPrompt.ask(
         "Enter your github.com username",
