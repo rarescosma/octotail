@@ -28,6 +28,7 @@ dependencies = [
   "pyxdg == 0.28",
   "returns[compatible-mypy]>=0.21.0",
   "rich == 13.9.2",
+  "shellingham>=1.5.4",
   "termcolor == 2.5.0",
   "typer-slim == 0.12.5",
   "websockets == 10.4",
