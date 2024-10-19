@@ -102,7 +102,7 @@ jobs:
           uv publish --username=__token__ --password="$PYPI_TOKEN" "dist/*-${version}*"
 
   promote-release:
-    if: "github.ref == 'refs/heads/ci' && !contains(github.event.head_commit.message, '[cron]')"
+    if: "github.ref == 'refs/heads/no-ci' && !contains(github.event.head_commit.message, '[cron]')"
     name: promote-release
     needs: [ "publish-wheels", "get-versions" ]
     runs-on: arc-octotail
