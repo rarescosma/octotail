@@ -24,12 +24,12 @@ jobs:
       - name: Show the version
         run: |
           echo "version is: $VERSION"
-      - name: Check that tag version and pyproject.toml version are the same
+      - name: Check that tag version and __init__.py version are the same
         shell: bash
         run: |
           version="$(echo $VERSION | sed 's/^v//')"
-          if ! grep -q "version = \"$version\"" pyproject.toml; then
-            echo "version does not match pyproject.toml" >&2
+          if ! grep -q "__version__ = \"$version\"" octotail/__init__.py; then
+            echo "version does not match octotail/__init__.py" >&2
             exit 1
           fi
       - name: Generate a changelog
