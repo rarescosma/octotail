@@ -5,6 +5,7 @@ import os
 import stat
 import sys
 import time
+import typing as t
 from pathlib import Path
 from unittest.mock import patch
 
@@ -13,10 +14,10 @@ from returns.pipeline import is_successful
 from rich import print as rprint
 from rich.panel import Panel
 from rich.prompt import InvalidResponse, Prompt
-from typer import Typer
+from typer import Option, Typer
 from xdg.BaseDirectory import xdg_data_home
 
-from octotail.cli import NO_FRILLS, NO_RICH
+from octotail.cli import NO_FRILLS, NO_RICH, version_callback
 from octotail.git import get_remotes, get_repo_dir, git
 from octotail.utils import debug, find_free_port
 
@@ -198,7 +199,18 @@ def install_proxy_remote() -> None:  # noqa: PLR0912, PLR0915
 
 
 @app.callback(no_args_is_help=True)
-def show_help() -> None:
+def _show_help(
+    _version: t.Annotated[
+        bool | None,
+        Option(
+            "--version",
+            help="Show the version and exit.",
+            callback=version_callback,
+            is_eager=True,
+            rich_help_panel="Options",
+        ),
+    ] = None
+) -> None:
     pass
 
 

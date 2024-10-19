@@ -43,7 +43,7 @@ def _repo_callback(value: str | None) -> str | None:
     return value
 
 
-def _version_callback(value: bool) -> None:
+def version_callback(value: bool) -> None:
     if value:
         print(f"octotail version: {__version__}")
         raise Exit()
@@ -155,7 +155,7 @@ class Opts:
         Option(
             "--version",
             help="Show the version and exit.",
-            callback=_version_callback,
+            callback=version_callback,
             is_eager=True,
             rich_help_panel="Others",
         ),
