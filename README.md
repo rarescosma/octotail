@@ -177,6 +177,7 @@ section of the mitmproxy documentation, changing `~/.mitmproxy` with
   --port                         INTEGER  Port the proxy will listen on.
                                           [env var: OCTOTAIL_PROXY_PORT]
                                           [default: (random in range 8100-8500)]
+  --version                               Show the version and exit.
   --help                                  Show this message and exit.
 
 ```

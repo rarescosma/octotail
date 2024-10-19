@@ -10,8 +10,10 @@ from unittest.mock import patch
 
 from rich.box import Box
 from rich.panel import Panel
-from typer import Argument, BadParameter, Option, Typer
+from typer import Argument, BadParameter, Exit, Option, Typer
 from typer.core import TyperCommand
+
+from octotail import __version__
 
 NO_RICH = os.getenv("NO_RICH") not in ["0", "false", "False", None]
 NO_FRILLS: Box = Box("----\n" + "    \n" * 7)
@@ -39,6 +41,12 @@ def _repo_callback(value: str | None) -> str | None:
     if value is not None and re.match(pattern, value) is None:
         raise BadParameter(f"invalid format for repo: {value}")
     return value
+
+
+def _version_callback(value: bool) -> None:
+    if value:
+        print(f"octotail version: {__version__}")
+        raise Exit()
 
 
 @dataclass(frozen=True)
@@ -139,6 +147,16 @@ class Opts:
             envvar="OCTOTAIL_PROXY_PORT",
             help="Port the proxy will listen on.",
             show_default="random in range 8100-8500",
+            rich_help_panel="Others",
+        ),
+    ] = None
+    version: t.Annotated[
+        bool | None,
+        Option(
+            "--version",
+            help="Show the version and exit.",
+            callback=_version_callback,
+            is_eager=True,
             rich_help_panel="Others",
         ),
     ] = None
