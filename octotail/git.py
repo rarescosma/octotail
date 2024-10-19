@@ -2,11 +2,12 @@
 """ Git pipelines. """
 import re
 import typing as t
-from subprocess import check_output
+from pathlib import Path
+from subprocess import DEVNULL, check_output
 
 from returns.converters import flatten, maybe_to_result
 from returns.functions import identity
-from returns.io import IO, IOResultE, impure_safe
+from returns.io import IO, impure_safe
 from returns.maybe import Maybe, Nothing, Some
 from returns.pipeline import flow
 from returns.pointfree import bind_result, map_
@@ -24,8 +25,16 @@ class GitRemote(t.NamedTuple):
 
 
 @impure_safe
-def _call_git_remote(*args: str) -> str:
-    return check_output(["git", "remote", *args]).decode().strip()
+def _check_git(cmd: str, cwd: Path = Path()) -> str:
+    return check_output(["git", *cmd.split()], stderr=DEVNULL, cwd=cwd).decode().strip()
+
+
+def git(cmd: str, *, cwd: Path = Path()) -> ResultE[str]:
+    return flow(
+        _check_git(cmd, cwd),
+        IO.from_ioresult,
+        unsafe_perform_io,
+    )
 
 
 @safe
@@ -53,10 +62,10 @@ def _extract_github_repo(remote: GitRemote) -> ResultE[str]:
 
 def get_remotes(
     filter_fn: Maybe[t.Callable[[GitRemote], bool]] = Nothing,
-) -> IOResultE[list[GitRemote]]:
+) -> ResultE[list[GitRemote]]:
     _filter_fn = filter_fn.map(lambda f: lambda xs: [x for x in xs if f(x)])
     return flow(
-        _call_git_remote("--verbose"),
+        git("remote --verbose"),
         bind_result(_parse_remotes),
         map_(_filter_fn.value_or(identity)),
     )
@@ -65,8 +74,10 @@ def get_remotes(
 def guess_github_repo() -> ResultE[str]:
     remote = flow(
         get_remotes(Some(lambda r: GH_REMOTE_MARKER in r.url)),
-        IO.from_ioresult,
-        unsafe_perform_io,
         bind_result(_limit_remotes),
     )
     return flatten(remote.map(_extract_github_repo))
+
+
+def get_repo_dir() -> ResultE[Path]:
+    return git("rev-parse --sq --show-toplevel").map(Path)
