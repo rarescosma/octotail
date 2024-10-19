@@ -87,6 +87,18 @@ jobs:
           uv build
           echo "__version__ = '${test_version}'" > octotail/__init__.py
           uv build
+      - name: Test executables in isolation
+        run: |
+          version="${{ needs.get-versions.outputs.version }}"
+          test_version="${{ needs.get-versions.outputs.test_version }}"
+          uvx --find-links=./dist --isolated --no-cache \
+            --from=octotail==${test_version} octotail --help
+          uvx --find-links=./dist --isolated --no-cache \
+            --from=octotail==${test_version} octotailx --help
+          uvx --find-links=./dist --isolated --no-cache \
+            --from=octotail==${version} octotail --help
+          uvx --find-links=./dist --isolated --no-cache \
+            --from=octotail==${version} octotailx --help
       - name: Publish to test.pypi
         env:
           TEST_PYPI_TOKEN: ${{ secrets.TEST_PYPI_TOKEN }}
