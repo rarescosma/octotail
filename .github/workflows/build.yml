@@ -18,7 +18,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Grab the version from __init__.py
         env:
-          TEST_PYPI_SUFFIX: "a2"
+          TEST_PYPI_SUFFIX: "a9"
         shell: bash
         run: |
           version="$(head -n5 octotail/__init__.py | grep -oE "__version__ = \"[0-9\.]+\"" | cut -d'"' -f2)"
