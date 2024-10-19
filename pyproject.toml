@@ -1,6 +1,6 @@
 [project]
 name = "octotail"
-version = "1.0.12"
+dynamic = ["version"]
 description = "Live tail GitHub Actions runs on git push"
 authors = [{ name = "Rareș Cosma", email = "rares@getbetter.ro" }]
 readme = "README.md"
@@ -64,6 +64,9 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.sdist]
 include = ["/octotail", "/examples"]
+
+[tool.hatch.version]
+path = "octotail/__init__.py"
 
 [tool.ruff]
 line-length = 100

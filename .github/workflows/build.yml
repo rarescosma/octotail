@@ -16,12 +16,12 @@ jobs:
     runs-on: arc-octotail
     steps:
       - uses: actions/checkout@v4
-      - name: Grab the version from pyproject.toml
+      - name: Grab the version from __init__.py
         env:
           TEST_PYPI_SUFFIX: "a2"
         shell: bash
         run: |
-          version="$(head -n5 pyproject.toml | grep -oE "version = \"[0-9\.]+\"" | cut -d'"' -f2)"
+          version="$(head -n5 octotail/__init__.py | grep -oE "__version__ = \"[0-9\.]+\"" | cut -d'"' -f2)"
           echo "VERSION=$version" >> $GITHUB_ENV
           echo "TEST_VERSION=${version}${TEST_PYPI_SUFFIX}" >> $GITHUB_ENV
     outputs:
@@ -85,10 +85,9 @@ jobs:
         run: |
           test_version="${{ needs.get-versions.outputs.test_version }}"
           uv build
-          uvx --from=toml-cli toml set --toml-path=pyproject.toml project.version "${test_version}"
+          echo "__version__ = '${test_version}'" > octotail/__init__.py
           uv build
       - name: Publish to test.pypi
-        shell: bash
         env:
           TEST_PYPI_TOKEN: ${{ secrets.TEST_PYPI_TOKEN }}
         run: |
@@ -96,13 +95,12 @@ jobs:
           uv publish --publish-url https://test.pypi.org/legacy/ --username=__token__ --password="$TEST_PYPI_TOKEN" "dist/*-${test_version}*"
       - name: Publish to pypi
         if: "github.ref == 'refs/heads/ci' && !contains(github.event.head_commit.message, '[cron]')"
-        shell: bash
         env:
           PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
         run: |
           version="${{ needs.get-versions.outputs.version }}"
           test_version="${{ needs.get-versions.outputs.test_version }}"
-          git checkout pyproject.toml
+          git checkout octotail/__init__.py
           find ./dist -name "*-${test_version}*" -delete
           uv publish --username=__token__ --password="$PYPI_TOKEN" "dist/*-${version}*"
 

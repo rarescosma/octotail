@@ -12,7 +12,7 @@ install:
 	ln -sf $(PWD)/octotail/x.py $(PREFIX)/bin/octotailx
 
 bump:
-	bumpversion patch --verbose pyproject.toml uv.lock --commit --sign-tags --tag
+	bumpversion patch --verbose octotail/__init__.py uv.lock --commit --sign-tags --tag
 
 pycheck:
 	./hacks/pycheck-parallel || ./hacks/pycheck-fix
