@@ -208,22 +208,23 @@ octotail $(git rev-parse v1.0.42^{commit}) -r refs/tags/v1.0.42
 
 ### NEW: `octotailx install-proxy-remote`
 
-If you're using `uv` you can now simply run:
-
-```shell
-uvx --from=octotail octotailx install-proxy-remote
-```
-
-which will prompt set up the a proxy, post-receive hook enabled remote for
-your repository. Then you can simply `git push proxy` and all the tailing
-should happen automatically!
-
-Alternatively, if you installed via one of the other methods, the script
-should be invokable by simply running:
-
-```shell
-octotailx install-proxy-remote
-```
+> [!TIP] 
+> If you're using `uv` you can now simply run:
+> 
+> ```shell
+> uvx --from=octotail octotailx install-proxy-remote
+> ```
+> 
+> ..which will prompt you for setting up a proxy, post-receive-hook-enabled
+> remote for your repository. Then you can simply `git push proxy` and all the
+> tailing should happen automatically!
+> 
+> Alternatively, if you installed via one of the other methods, the script
+> should be called with:
+> 
+> ```shell
+> octotailx install-proxy-remote
+> ```
 
 ### As a post-receive hook
 
