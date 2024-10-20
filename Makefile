@@ -15,4 +15,4 @@ bump:
 	bumpversion patch --verbose octotail/__init__.py uv.lock --commit --sign-tags --tag
 
 pycheck:
-	./hacks/pycheck-parallel || ./hacks/pycheck-fix
+	./hacks/pycheck-fmt && ./hacks/pycheck-parallel

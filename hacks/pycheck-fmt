@@ -19,23 +19,6 @@ echo ">>>>>> black <<<<<<"
 black -l 100 "${_module}"
 echo "-------------------"
 
-# ruff is good
-echo
-echo ">>>>>> ruff <<<<<<<"
-ruff check "${_module}"
-echo "-------------------"
-
-# types are good
-echo ">>>>>> mypy <<<<<<<"
-mypy --ignore-missing-imports --disallow-untyped-defs "${_module}"
-echo "-------------------"
-
-# messy code is bad
-echo
-echo ">>>>>> pylint <<<<<"
-pylint "${_module}"
-echo "-------------------"
-
 # out-of-date readme is bad
 echo
 echo ">> update-readme <<"
