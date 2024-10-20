@@ -19,19 +19,19 @@ classifiers = [
 ]
 license = { text = "Unlicense" }
 dependencies = [
-  "fake-useragent == 1.5.1",
-  "mitmproxy == 11.0.0",
-  "pygithub == 2.4.0",
-  "pykka == 4.0.2",
-  "pyppeteer == 2.0.0",
-  "pyppeteer-stealth == 2.7.4",
-  "pyxdg == 0.28",
-  "returns >=0.21.0",
-  "rich == 13.9.2",
-  "shellingham >= 1.5.4",
-  "termcolor == 2.5.0",
-  "typer == 0.12.5",
-  "websockets == 10.4",
+  "fake-useragent>=1.5",
+  "mitmproxy>=11.0",
+  "pygithub>=2.4",
+  "pykka>=4.0",
+  "pyppeteer>=2.0",
+  "pyppeteer-stealth>=2.7",
+  "pyxdg>=0.28",
+  "returns>=0.21",
+  "rich>=13.9",
+  "shellingham>=1.5",
+  "termcolor>=2.5",
+  "typer>=0.12",
+  "websockets>=10",
 ]
 
 [project.scripts]
@@ -46,16 +46,16 @@ Homepage = "https://getbetter.ro/projects/#octotail"
 
 [tool.uv]
 dev-dependencies = [
-  "black == 24.10.0",
-  "bumpversion==0.6.0",
-  "isort == 5.13.2",
-  "mypy == 1.11.2",
-  "ptyprocess == 0.7.0",
-  "pycln == 2.4.0",
-  "pylint == 3.3.1",
+  "black>=24.10",
+  "bumpversion>=0.6",
+  "isort>=5.13",
+  "mypy>=1.12",
+  "ptyprocess>=0.7",
+  "pycln>=2.4",
+  "pylint>=3.3",
   "returns[compatible-mypy]>=0.21.0",
   "ruff>=0.6.9",
-  "vulture == 2.13",
+  "vulture>=2",
 ]
 
 [build-system]
