@@ -8,43 +8,31 @@ from github.Repository import Repository
 from github.WorkflowJob import WorkflowJob
 from github.WorkflowRun import WorkflowRun
 from pykka import ActorRef, ThreadingActor
-from returns.io import IO, impure_safe
+from returns.io import IO, IOResultE, impure_safe
 from returns.pipeline import flow, is_successful
 from returns.result import Failure, ResultE, Success
 from returns.unsafe import unsafe_perform_io
 
 from octotail.cli import Opts
+from octotail.manager import Manager
+from octotail.msg import JobDone, WorkflowDone
 from octotail.utils import Retry, debug, log, retries
 
 VALID_STATI = ["queued", "in_progress", "requested", "waiting", "action_required"]
 POLL_INTERVAL = 2
 
 
-class WorkflowDone(t.NamedTuple):
-    """Workflow done message."""
-
-    conclusion: str
-
-
-class JobDone(t.NamedTuple):
-    """Job done message."""
-
-    job_id: int
-    job_name: str
-    conclusion: str
-
-
 class RunWatcher(ThreadingActor):
     """Watches for changes in a GitHub Actions run."""
 
-    mgr: ActorRef
+    mgr: ActorRef[Manager]
     wf_run: WorkflowRun
     stop_event: Event
 
     _new_jobs: set[int]
     _concluded_jobs: set[int]
 
-    def __init__(self, mgr: ActorRef, wf_run: WorkflowRun):
+    def __init__(self, mgr: ActorRef[Manager], wf_run: WorkflowRun):
         super().__init__()
         self.mgr = mgr
         self.wf_run = wf_run
@@ -90,39 +78,34 @@ class RunWatcher(ThreadingActor):
         return False
 
 
-@retries(10, 0.5)
-def _get_active_run(repo: Repository, opts: Opts) -> ResultE[WorkflowRun] | Retry:
-    runs_res = flow(
-        _get_workflow_runs(repo, opts.commit_sha),
-        IO.from_ioresult,
-        unsafe_perform_io,
-    )
+def _get_active_run(
+    opts: Opts, run_lister: t.Callable[..., ResultE[list[WorkflowRun]]]
+) -> ResultE[WorkflowRun] | Retry:
+    runs_res = run_lister()
     if not is_successful(runs_res):
         return Failure(runs_res.failure())
 
-    runs = runs_res.unwrap()
-    if len(runs) == 0:
+    if not (runs := runs_res.unwrap()) or not (filtered := _filter_runs(opts, runs)):
         return Retry()
 
-    filters: list[t.Callable[[WorkflowRun], bool]] = [lambda wf: wf.status in VALID_STATI]
-    if opts.workflow_name:
-        filters.append(lambda wf: wf.name == t.cast(str, opts.workflow_name))
-    if opts.ref_name:
-        filters.append(lambda wf: t.cast(str, opts.ref_name).endswith(wf.head_branch))
-
-    _runs = [r for r in runs if all(f(r) for f in filters)]
-    if not _runs:
-        return Retry()
-
-    if len(_runs) > 1:
+    if len(filtered) > 1:
         log(f"found multiple active runs for commit '{opts.commit_sha}'")
-        for run in _runs:
+        for run in filtered:
             log(f"\n\t{run.html_url}", skip_prefix=True)
         log("", skip_prefix=True)
         log("try narrowing down by workflow name (--workflow) or ref name (--ref-name)")
         return Failure(RuntimeError("cannot disambiguate"))
 
-    return Success(_runs[0])
+    return Success(filtered[0])
+
+
+def _filter_runs(opts: Opts, runs: list[WorkflowRun]) -> list[WorkflowRun]:
+    predicates: list[t.Callable[[WorkflowRun], bool]] = [lambda run: run.status in VALID_STATI]
+    if opts.workflow_name:
+        predicates.append(lambda run: run.name == t.cast(str, opts.workflow_name))
+    if opts.ref_name:
+        predicates.append(lambda run: t.cast(str, opts.ref_name).endswith(run.head_branch))
+    return [run for run in runs if all(predicate(run) for predicate in predicates)]
 
 
 @impure_safe
@@ -143,9 +126,14 @@ def _get_repo(repo_id: str, pat: str) -> Repository:
 
 
 def get_active_run(repo_id: str, opts: Opts) -> ResultE[WorkflowRun]:
-    repo = flow(
-        _get_repo(repo_id, opts.gh_pat),
-        IO.from_ioresult,
-        unsafe_perform_io,
+    repo = _get_repo(repo_id, opts.gh_pat)
+    return retries(10, 0.5)(_get_active_run)(
+        opts,
+        lambda: flow(
+            IOResultE[Repository]
+            .from_ioresult(repo)
+            .bind(lambda _repo: _get_workflow_runs(_repo, opts.commit_sha)),
+            IO.from_ioresult,
+            unsafe_perform_io,
+        ),
     )
-    return repo.bind(lambda _repo: _get_active_run(_repo, opts))

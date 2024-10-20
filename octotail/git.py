@@ -5,14 +5,13 @@ import typing as t
 from pathlib import Path
 from subprocess import DEVNULL, check_output
 
-from returns.converters import flatten, maybe_to_result
+from returns.converters import maybe_to_result
 from returns.functions import identity
-from returns.io import IO, impure_safe
+from returns.io import IOResultE, impure_safe
 from returns.maybe import Maybe, Nothing, Some
 from returns.pipeline import flow
 from returns.pointfree import bind_result, map_
 from returns.result import ResultE, safe
-from returns.unsafe import unsafe_perform_io
 
 GH_REMOTE_MARKER = "git@github.com"
 
@@ -25,16 +24,8 @@ class GitRemote(t.NamedTuple):
 
 
 @impure_safe
-def _check_git(cmd: str, cwd: Path = Path()) -> str:
+def check_git(cmd: str, *, cwd: Path = Path()) -> str:
     return check_output(["git", *cmd.split()], stderr=DEVNULL, cwd=cwd).decode().strip()
-
-
-def git(cmd: str, *, cwd: Path = Path()) -> ResultE[str]:
-    return flow(
-        _check_git(cmd, cwd),
-        IO.from_ioresult,
-        unsafe_perform_io,
-    )
 
 
 @safe
@@ -62,22 +53,22 @@ def _extract_github_repo(remote: GitRemote) -> ResultE[str]:
 
 def get_remotes(
     filter_fn: Maybe[t.Callable[[GitRemote], bool]] = Nothing,
-) -> ResultE[list[GitRemote]]:
+) -> IOResultE[list[GitRemote]]:
     _filter_fn = filter_fn.map(lambda f: lambda xs: [x for x in xs if f(x)])
     return flow(
-        git("remote --verbose"),
+        check_git("remote --verbose"),
         bind_result(_parse_remotes),
         map_(_filter_fn.value_or(identity)),
     )
 
 
-def guess_github_repo() -> ResultE[str]:
-    remote = flow(
+def guess_github_repo() -> IOResultE[str]:
+    return flow(
         get_remotes(Some(lambda r: GH_REMOTE_MARKER in r.url)),
         bind_result(_limit_remotes),
+        bind_result(_extract_github_repo),
     )
-    return flatten(remote.map(_extract_github_repo))
 
 
-def get_repo_dir() -> ResultE[Path]:
-    return git("rev-parse --sq --show-toplevel").map(Path)
+def get_repo_dir() -> IOResultE[Path]:
+    return flow(check_git("rev-parse --sq --show-toplevel"), map_(Path))

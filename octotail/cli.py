@@ -180,7 +180,7 @@ class _HelpIsLast(TyperCommand):
         return help_option
 
 
-def entrypoint(main_fn: t.Callable[[Opts], int]) -> t.Callable:
+def entrypoint(main_fn: t.Callable[[Opts], int]) -> t.Callable[[], None]:
     def wrapped(opts: Opts) -> None:
         _post_init.set(_noop)
         main_fn(opts)
