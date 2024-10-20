@@ -2,31 +2,45 @@
 
 import dataclasses
 import multiprocessing as mp
+from multiprocessing.queues import JoinableQueue, Queue
 from threading import Event
 
 from github.WorkflowJob import WorkflowJob
 from pykka import ThreadingActor
 
-from octotail.browser import CloseRequest, ExitRequest, VisitRequest
-from octotail.gh import JobDone, WorkflowDone
-from octotail.mitm import WsSub
-from octotail.streamer import OutputItem, run_streamer
+from octotail.msg import (
+    BrowseRequest,
+    CloseRequest,
+    ExitRequest,
+    JobDone,
+    OutputItem,
+    StreamerMsg,
+    VisitRequest,
+    WorkflowDone,
+    WsSub,
+)
+from octotail.streamer import run_streamer
 from octotail.utils import debug
 
-type MgrMessage = WorkflowJob | JobDone | WorkflowDone
+type MgrMessage = WorkflowJob | WsSub | JobDone | WorkflowDone
 
 
 class Manager(ThreadingActor):
     """I'm the Baahwss."""
 
-    browse_queue: mp.Queue
-    output_queue: mp.JoinableQueue
+    browse_queue: Queue[BrowseRequest]
+    output_queue: JoinableQueue[StreamerMsg]
     stop_event: Event
 
     streamers: dict[int, mp.Process]
     job_map: dict[int, str]
 
-    def __init__(self, browse_queue: mp.Queue, output_queue: mp.JoinableQueue, stop: Event):
+    def __init__(
+        self,
+        browse_queue: Queue[BrowseRequest],
+        output_queue: JoinableQueue[StreamerMsg],
+        stop: Event,
+    ):
         super().__init__()
         self.browse_queue = browse_queue
         self.output_queue = output_queue
@@ -35,8 +49,8 @@ class Manager(ThreadingActor):
         self.streamers = {}
         self.job_map = {}
 
-    def on_receive(self, message: None) -> None:
-        debug(f"manager got message: {message!r}")
+    def on_receive(self, message: MgrMessage) -> None:
+        debug(f"{message!r}")
 
         match message:
             case WorkflowJob() as job:

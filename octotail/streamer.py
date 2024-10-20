@@ -3,15 +3,14 @@
 import asyncio as aio
 import json
 import multiprocessing as mp
-import typing as t
+from multiprocessing.queues import Queue
 
 import websockets.client
 from returns.result import Success, safe
 from websockets.exceptions import ConnectionClosedError
 
-from octotail.browser import RANDOM_UA
-from octotail.mitm import WsSub
-from octotail.utils import log
+from octotail.msg import OutputItem, StreamerMsg, WebsocketClosed, WsSub
+from octotail.utils import RANDOM_UA, log
 
 WS_HEADERS = {
     "User-Agent": RANDOM_UA,
@@ -24,24 +23,13 @@ WS_HEADERS = {
 }
 
 
-class OutputItem(t.NamedTuple):
-    """Holds an output item."""
-
-    job_name: str
-    lines: list[str]
-
-
-class WebsocketClosed:
-    """Indicates the closure of a websocket."""
-
-
-def run_streamer(ws_sub: WsSub, queue: mp.Queue) -> mp.Process:
+def run_streamer(ws_sub: WsSub, queue: Queue[StreamerMsg]) -> mp.Process:
     process = mp.Process(target=_streamer, args=(ws_sub, queue))
     process.start()
     return process
 
 
-def _streamer(ws_sub: WsSub, queue: mp.Queue) -> None:
+def _streamer(ws_sub: WsSub, queue: Queue[StreamerMsg]) -> None:
     loop = aio.new_event_loop()
     aio.set_event_loop(loop)
     try:
@@ -50,7 +38,7 @@ def _streamer(ws_sub: WsSub, queue: mp.Queue) -> None:
         loop.close()
 
 
-async def _stream_it(ws_sub: WsSub, queue: mp.Queue) -> None:
+async def _stream_it(ws_sub: WsSub, queue: Queue[StreamerMsg]) -> None:
     ws_url = "wss://" + ws_sub.url.removeprefix("https://")
     job_name = ws_sub.job_name or "unknown"
 

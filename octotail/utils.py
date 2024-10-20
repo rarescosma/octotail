@@ -9,8 +9,10 @@ import time
 import typing as t
 from pathlib import Path
 
-from returns.result import Failure, Result, Success
+from fake_useragent import UserAgent
+from returns.result import Failure, ResultE, Success
 
+RANDOM_UA: str = UserAgent().random
 DEBUG = os.getenv("DEBUG") not in ["0", "false", "False", None]
 FIND_FREE_PORT_TRIES = 100
 
@@ -50,14 +52,14 @@ def debug(msg: str) -> None:
 
 
 def retries[
-    **P
+    **P, R
 ](num_retries: int, sleep_time: float) -> t.Callable[
-    [t.Callable[P, Result | Retry]], t.Callable[P, Result]
+    [t.Callable[P, ResultE[R] | Retry]], t.Callable[P, ResultE[R]]
 ]:
     """ "just put a retry loop around it" """
 
-    def wrapper(fn: t.Callable[P, Result | Retry]) -> t.Callable[P, Result]:
-        def wrapped(*args: P.args, **kwargs: P.kwargs) -> Result:
+    def wrapper(fn: t.Callable[P, ResultE[R] | Retry]) -> t.Callable[P, ResultE[R]]:
+        def wrapped(*args: P.args, **kwargs: P.kwargs) -> ResultE[R]:
             for _ in range(num_retries):
                 match fn(*args, **kwargs):
                     case Success() as s:

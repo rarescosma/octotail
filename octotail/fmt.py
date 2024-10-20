@@ -2,17 +2,18 @@
 Routines for pretty formatting the output.
 """
 
-import multiprocessing as mp
 import typing as t
 from contextlib import suppress
 from functools import partial
+from multiprocessing.queues import JoinableQueue
 from queue import Empty
 
 from pykka import ActorRef, ThreadingActor
 from termcolor import colored
 from termcolor._types import Color
 
-from octotail.streamer import OutputItem, WebsocketClosed
+from octotail.manager import Manager
+from octotail.msg import OutputItem, StreamerMsg, WebsocketClosed
 from octotail.utils import debug, flatmap, remove_consecutive_falsy
 
 WHEEL: list[Color] = [
@@ -27,12 +28,12 @@ WHEEL: list[Color] = [
 class Formatter(ThreadingActor):
     """The output formatting actor."""
 
-    mgr: ActorRef
-    queue: mp.JoinableQueue
+    mgr: ActorRef[Manager]
+    queue: JoinableQueue[StreamerMsg]
     _wheel_idx: int
     _color_map: dict[str, int]
 
-    def __init__(self, mgr: ActorRef, queue: mp.JoinableQueue):
+    def __init__(self, mgr: ActorRef[Manager], queue: JoinableQueue[StreamerMsg]):
         super().__init__()
         self.mgr = mgr
         self.queue = queue
@@ -74,7 +75,7 @@ class Formatter(ThreadingActor):
         )
 
 
-def _decorate_line(line: str, job_name: str, _colored: t.Callable) -> list[str]:
+def _decorate_line(line: str, job_name: str, _colored: t.Callable[..., str]) -> list[str]:
     if line.startswith("[command]"):
         return [colored("$ " + line.removeprefix("[command]"), "white", force_color=True)]
 

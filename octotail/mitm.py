@@ -3,11 +3,11 @@
 import base64
 import copy
 import json
-import multiprocessing
+import multiprocessing as mp
 import sys
 from argparse import Namespace
 from contextlib import suppress
-from dataclasses import dataclass
+from multiprocessing.queues import Queue
 from pathlib import Path
 from queue import Empty
 from threading import Event
@@ -19,9 +19,11 @@ from returns.converters import result_to_maybe
 from returns.maybe import Maybe, Nothing, Some
 from returns.pipeline import flow
 from returns.pointfree import map_
-from returns.result import Result, Success, safe
+from returns.result import ResultE, Success, safe
 from xdg.BaseDirectory import xdg_data_home
 
+from octotail.manager import Manager
+from octotail.msg import WsSub
 from octotail.utils import Retry, debug, is_port_open, retries
 
 MITM_CONFIG_DIR = Path(xdg_data_home) / "octotail" / "mitmproxy"
@@ -32,26 +34,16 @@ MARKERS = Namespace(
 )
 
 
-@dataclass(frozen=True)
-class WsSub:
-    """Represents a websocket subscription."""
-
-    url: str
-    subs: str
-    job_id: int
-    job_name: str | None = None
-
-
 class ProxyWatcher(ThreadingActor):
     """Watches for websocket subscriptions done through the mitmproxy."""
 
-    mgr: ActorRef
+    mgr: ActorRef[Manager]
     port: int
     _stop_event: Event
-    _proxy_ps: multiprocessing.Process
-    _q: multiprocessing.Queue
+    _proxy_ps: mp.Process
+    _q: Queue[str]
 
-    def __init__(self, mgr: ActorRef | None, port: int):
+    def __init__(self, mgr: ActorRef[Manager] | None, port: int):
         super().__init__()
         if mgr is not None:
             self.mgr = mgr
@@ -59,11 +51,9 @@ class ProxyWatcher(ThreadingActor):
         self.port = port
 
     def on_start(self) -> None:
-        self._q = multiprocessing.Queue()
+        self._q = mp.Queue()
         MITM_CONFIG_DIR.mkdir(exist_ok=True, parents=True)
-        self._proxy_ps = multiprocessing.Process(
-            target=_mitmdump_wrapper, args=(self._q, self.port)
-        )
+        self._proxy_ps = mp.Process(target=_mitmdump_wrapper, args=(self._q, self.port))
         self._proxy_ps.start()
 
     def on_stop(self) -> None:
@@ -121,7 +111,7 @@ def _extract_job_id(buffer: str) -> int:
     return int(good.split(":")[1])
 
 
-def _mitmdump_wrapper(queue: multiprocessing.Queue, port: int) -> None:
+def _mitmdump_wrapper(queue: Queue[str], port: int) -> None:
     sys.argv = (
         f"mitmdump --flow-detail=4 --no-rawtcp -p {port} --set confdir={MITM_CONFIG_DIR}".split()
     )
@@ -133,7 +123,7 @@ def _mitmdump_wrapper(queue: multiprocessing.Queue, port: int) -> None:
 
 
 @retries(50, 0.2)
-def _check_liveness(proxy_ps: multiprocessing.Process, port: int) -> Result[bool, None] | Retry:
+def _check_liveness(proxy_ps: mp.Process, port: int) -> ResultE[bool] | Retry:
     if not is_port_open(port):
         return Success(True)
     if not proxy_ps.is_alive():

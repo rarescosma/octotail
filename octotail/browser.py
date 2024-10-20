@@ -7,10 +7,10 @@ import time
 import typing as t
 from collections import deque
 from contextlib import suppress
+from multiprocessing.queues import Queue
 from pathlib import Path
 from queue import Empty
 
-from fake_useragent import UserAgent
 from pykka import ActorRef, ThreadingActor
 from pyppeteer import launch
 from pyppeteer.browser import Browser
@@ -19,10 +19,11 @@ from pyppeteer_stealth import stealth
 from xdg.BaseDirectory import xdg_cache_home
 
 from octotail.cli import Opts
-from octotail.utils import debug, log
+from octotail.manager import Manager
+from octotail.msg import BrowseRequest, CloseRequest, ExitRequest, VisitRequest
+from octotail.utils import RANDOM_UA, debug, log
 
 COOKIE_JAR = Path(xdg_cache_home) / "octotail" / "gh-cookies.json"
-RANDOM_UA = UserAgent().random
 
 CHROME_ARGS = [
     '--cryptauth-http-host ""',
@@ -57,52 +58,36 @@ CHROME_ARGS = [
 ]
 
 
-class VisitRequest(t.NamedTuple):
-    """Visit request message."""
-
-    url: str
-    job_id: int
-
-
-class CloseRequest(t.NamedTuple):
-    """Close request message."""
-
-    job_id: int
-
-
-class ExitRequest:
-    """Exit request message."""
-
-
-type BrowseRequest = VisitRequest | CloseRequest | ExitRequest
+type Cookies = list[dict[str, t.Any]]
 
 
 class BrowserWatcher(ThreadingActor):
     """Runs the pyppeteer browser in a separate process."""
 
     opts: Opts
-    inbox: mp.Queue
-    mgr: ActorRef
+    inbox: Queue[BrowseRequest]
+    mgr: ActorRef[Manager]
 
-    def __init__(self, mgr: ActorRef, opts: Opts, inbox: mp.Queue):
+    def __init__(self, mgr: ActorRef[Manager], opts: Opts, inbox: Queue[BrowseRequest]):
         super().__init__()
         self.opts = opts
         self.inbox = inbox
         self.mgr = mgr
 
     def watch(self) -> None:
-        browser = mp.Process(target=_run_browser, args=(self.opts, self.inbox))
+        browser = mp.Process(target=_start_controller, args=(self.opts, self.inbox))
         browser.start()
         browser.join()
         self.mgr.stop()
         debug("exiting")
 
 
-def _run_browser(opts: Opts, inbox: mp.Queue) -> None:
+def _start_controller(opts: Opts, inbox: Queue[BrowseRequest]) -> None:
     loop = aio.new_event_loop()
     aio.set_event_loop(loop)
     try:
-        loop.run_until_complete(_browser(opts, inbox))
+        browser = loop.run_until_complete(_launch_browser(opts))
+        loop.run_until_complete(_controller(browser, opts, inbox))
     except KeyboardInterrupt:
         loop.close()
 
@@ -119,8 +104,12 @@ async def _launch_browser(opts: Opts) -> Browser:
     )
 
 
-async def _browser(opts: Opts, inbox: mp.Queue) -> None:
-    browser = await _launch_browser(opts)
+async def _controller(
+    browser: Browser,
+    opts: Opts,
+    inbox: Queue[BrowseRequest],
+    sleep_time: float = 0.5,
+) -> None:
     tasks = set()
     open_pages: dict[int, Page] = {}
     in_progress = aio.Event()
@@ -145,7 +134,8 @@ async def _browser(opts: Opts, inbox: mp.Queue) -> None:
         cookies = await _login_flow(start_page, opts)
         if isinstance(cookies, RuntimeError):
             log(f"fatal: {cookies}")
-            return await browser.close()
+            await browser.close()
+            return
         _save_user_cookies(opts.gh_user, cookies)
 
     while True:
@@ -156,7 +146,8 @@ async def _browser(opts: Opts, inbox: mp.Queue) -> None:
 
             match inbox.get_nowait():
                 case ExitRequest():
-                    return await browser.close()
+                    await browser.close()
+                    return
 
                 case CloseRequest() as close_req:
                     if close_req.job_id in open_pages:
@@ -169,10 +160,10 @@ async def _browser(opts: Opts, inbox: mp.Queue) -> None:
                     else:
                         _schedule_visit(visit_req)
 
-        await aio.sleep(0.5)
+        await aio.sleep(sleep_time)
 
 
-async def _login_flow(page: Page, opts: Opts) -> list[dict] | RuntimeError:
+async def _login_flow(page: Page, opts: Opts) -> Cookies | RuntimeError:
     await page.goto("https://github.com/login")
 
     await page.waitForSelector("#login_field")
@@ -195,7 +186,7 @@ async def _login_flow(page: Page, opts: Opts) -> list[dict] | RuntimeError:
 
     cookies = await page.cookies()
     await page.goto("about:blank")
-    return cookies
+    return t.cast(Cookies, cookies)
 
 
 async def _nom_cookies(user: str, page: Page) -> bool:
@@ -212,16 +203,16 @@ async def _nom_cookies(user: str, page: Page) -> bool:
     return True
 
 
-def _save_user_cookies(user: str, cookies: list[dict]) -> None:
+def _save_user_cookies(user: str, cookies: Cookies) -> None:
     COOKIE_JAR.parent.mkdir(parents=True, exist_ok=True)
     existing = json.loads(COOKIE_JAR.read_text()) if COOKIE_JAR.exists() else {}
     COOKIE_JAR.write_text(json.dumps({**existing, user: cookies}))
 
 
-def _get_user_cookies(user: str) -> dict | None:
+def _get_user_cookies(user: str) -> Cookies | None:
     if not COOKIE_JAR.exists():
         return None
-    return json.loads(COOKIE_JAR.read_text()).get(user)
+    return t.cast(Cookies, json.loads(COOKIE_JAR.read_text()).get(user))
 
 
 def _is_close_to_expiry(ts: str) -> bool:

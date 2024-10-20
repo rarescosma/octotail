@@ -4,37 +4,39 @@
 import dataclasses
 import multiprocessing as mp
 import sys
+from multiprocessing.queues import JoinableQueue, Queue
 from threading import Event
 
 from pykka import ActorRegistry
+from returns.io import IO
 from returns.pipeline import is_successful
-from returns.result import Failure, Success
+from returns.unsafe import unsafe_perform_io
 
 from octotail.cli import Opts, entrypoint
+from octotail.git import guess_github_repo
 from octotail.utils import debug, find_free_port, log
+
+
+def _repo_id(repo: str | None) -> str | None:
+    if repo is not None:
+        return repo
+    guessed = unsafe_perform_io(IO.from_ioresult(guess_github_repo()))
+    if is_successful(guessed):
+        return guessed.unwrap()
+    debug(f"failed to process git remotes: {guessed.failure()}")
+    return None
 
 
 @entrypoint
 def _main(opts: Opts) -> int:
-    from octotail.browser import BrowseRequest, BrowserWatcher
+    from octotail.browser import BrowserWatcher
     from octotail.fmt import Formatter
     from octotail.gh import RunWatcher, get_active_run
-    from octotail.git import guess_github_repo
     from octotail.manager import Manager
     from octotail.mitm import ProxyWatcher
-    from octotail.streamer import OutputItem, WebsocketClosed
+    from octotail.msg import BrowseRequest, StreamerMsg
 
-    def _repo_id() -> str | None:
-        match opts.repo or guess_github_repo():
-            case from_opts if isinstance(from_opts, str):
-                return from_opts
-            case Success(from_remote):
-                return from_remote
-            case Failure(e):
-                debug(f"failed to process git remotes: {e}")
-        return None
-
-    if (repo_id := _repo_id()) is None:
+    if (repo_id := _repo_id(opts.repo)) is None:
         log("fatal: could not guess repo from remotes and no --repo/-R was passed")
         return 1
 
@@ -50,17 +52,17 @@ def _main(opts: Opts) -> int:
         else:
             log("fatal: giving up finding a free port in the 8100 - 8500 range")
             return 1
-    debug(f"starting on port {opts.port}")
 
+    debug(f"starting on port {opts.port}")
     _stop = Event()
 
-    # pylint: disable=E1136
-    browser_inbox: mp.Queue[BrowseRequest] = mp.Queue()
-    output_queue: mp.JoinableQueue[OutputItem | WebsocketClosed | None] = mp.JoinableQueue()
-    manager = Manager.start(browser_inbox, output_queue, _stop)
+    browse_queue: Queue[BrowseRequest] = mp.Queue()
+    output_queue: JoinableQueue[StreamerMsg] = mp.JoinableQueue()
+
+    manager = Manager.start(browse_queue, output_queue, _stop)
 
     run_watcher = RunWatcher.start(manager, wf_run.unwrap())
-    browser_watcher = BrowserWatcher.start(manager, opts, browser_inbox)
+    browser_watcher = BrowserWatcher.start(manager, opts, browse_queue)
     proxy_watcher = ProxyWatcher.start(manager, opts.port)
     formatter = Formatter.start(manager, output_queue)
 
