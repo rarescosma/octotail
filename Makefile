@@ -16,3 +16,6 @@ bump:
 
 pycheck:
 	./hacks/pycheck-fmt && ./hacks/pycheck-parallel
+
+cov:
+	pytest tests --cov && coverage html
