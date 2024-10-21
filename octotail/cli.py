@@ -172,7 +172,7 @@ def _noop(_: Opts) -> None:
 _post_init: ContextVar[t.Callable[[Opts], None]] = ContextVar("post_init", default=_noop)
 
 
-class _HelpIsLast(TyperCommand):
+class _HelpIsLast(TyperCommand):  # pragma: no cover
     def get_help_option(self, ctx: t.Any) -> t.Any:
         """Use of 'Any' is unavoidable here if we don't want click as an explicit dependency."""
         help_option = super().get_help_option(ctx)
@@ -180,7 +180,7 @@ class _HelpIsLast(TyperCommand):
         return help_option
 
 
-def entrypoint(main_fn: t.Callable[[Opts], int]) -> t.Callable[[], None]:
+def entrypoint(main_fn: t.Callable[[Opts], int]) -> t.Callable[[], None]:  # pragma: no cover
     def wrapped(opts: Opts) -> None:
         _post_init.set(_noop)
         main_fn(opts)

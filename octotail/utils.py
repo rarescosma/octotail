@@ -24,6 +24,9 @@ T = t.TypeVar("T")
 class Retry:
     """Retry variant."""
 
+    def __eq__(self, other: t.Any) -> bool:
+        return isinstance(other, Retry)
+
 
 def flatmap(f: t.Callable[[A], t.Iterable[B]], xs: t.Iterable[A]) -> t.Iterable[B]:
     """Map f over an iterable and flatten the result set."""
@@ -36,7 +39,8 @@ def log(
     if skip_prefix:
         prefix = ""
     else:
-        frame = inspect.stack()[stack_offset]
+        stack = inspect.stack()
+        frame = stack[min(stack_offset, len(stack) - 1)]
         module = inspect.getmodule(frame[0])
         if module is not None and module.__file__ is not None:
             module_name = Path(module.__file__).with_suffix("").name
@@ -46,9 +50,9 @@ def log(
     print(f"{prefix}{msg}", file=file)
 
 
-def debug(msg: str) -> None:
+def debug(msg: str, *, file: t.Any = sys.stderr) -> None:
     if DEBUG:
-        log(msg, stack_offset=2, file=sys.stderr)
+        log(msg, stack_offset=2, file=file)
 
 
 def retries[
@@ -64,11 +68,11 @@ def retries[
                 match fn(*args, **kwargs):
                     case Success() as s:
                         return s
-                    case Retry():
-                        time.sleep(sleep_time)
-                        continue
                     case Failure() as f:
                         return f
+                    case _ as obj if obj == Retry():
+                        time.sleep(sleep_time)
+                        continue
             return Failure(RuntimeError(f"retries exceeded in '{fn.__name__}'"))
 
         return wrapped
@@ -87,7 +91,7 @@ def find_free_port(min_port: int = 8100, max_port: int = 8500) -> int | None:
     return random_port
 
 
-def is_port_open(port: int) -> int:
+def is_port_open(port: int) -> bool:
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     res = sock.connect_ex(("127.0.0.1", port))
     sock.close()
