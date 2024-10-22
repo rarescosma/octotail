@@ -66,7 +66,7 @@ def perform_io[**P, R](fn: t.Callable[P, IOResultE[R]]) -> t.Callable[P, ResultE
 
 def retries[
     **P, R
-](num_retries: int, sleep_time: float) -> t.Callable[
+](num_retries: int, retry_delay: float) -> t.Callable[
     [t.Callable[P, ResultE[R] | Retry]], t.Callable[P, ResultE[R]]
 ]:
     """ "just put a retry loop around it" """
@@ -80,7 +80,7 @@ def retries[
                     case Failure() as f:
                         return f
                     case _ as obj if obj == Retry():
-                        time.sleep(sleep_time)
+                        time.sleep(retry_delay)
                         continue
             return Failure(RuntimeError(f"retries exceeded in '{fn.__name__}'"))
 
