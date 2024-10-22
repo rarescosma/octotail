@@ -8,18 +8,68 @@ from github.Repository import Repository
 from github.WorkflowJob import WorkflowJob
 from github.WorkflowRun import WorkflowRun
 from pykka import ActorRef, ThreadingActor
-from returns.io import IO, IOResultE, impure_safe
-from returns.pipeline import flow, is_successful
+from returns.io import IOResultE, impure_safe
+from returns.pipeline import is_successful
 from returns.result import Failure, ResultE, Success
-from returns.unsafe import unsafe_perform_io
 
 from octotail.cli import Opts
 from octotail.manager import Manager
 from octotail.msg import JobDone, WorkflowDone
-from octotail.utils import Retry, debug, log, retries
+from octotail.utils import Retry, debug, log, perform_io, retries
 
 VALID_STATI = ["queued", "in_progress", "requested", "waiting", "action_required"]
-POLL_INTERVAL = 2
+DEFAULT_POLL_INTERVAL = 2
+
+
+class Client:  # pragma: no cover
+    """Side-effects galore."""
+
+    @staticmethod
+    @impure_safe
+    def get_workflow_jobs(wf_run: WorkflowRun) -> list[WorkflowJob]:
+        wf_run.update()
+        return list(wf_run.jobs())
+
+    @staticmethod
+    @impure_safe
+    def get_workflow_runs(repo: Repository, head_sha: str) -> list[WorkflowRun]:
+        return list(repo.get_workflow_runs(head_sha=head_sha))
+
+    @staticmethod
+    @impure_safe
+    def get_repo(repo_id: str, pat: str) -> Repository:
+        gh_client = Github(auth=Auth.Token(pat))
+        return gh_client.get_repo(repo_id)
+
+    @staticmethod
+    def poll_interval() -> float:
+        return DEFAULT_POLL_INTERVAL
+
+
+DEFAULT_CLIENT: Client = Client()
+
+
+class JobState(t.NamedTuple):
+    """Holds job state (seen or concluded)."""
+
+    seen_jobs: set[int]
+    concluded_jobs: set[int]
+
+    @classmethod
+    def default(cls) -> "JobState":
+        return cls(seen_jobs=set(), concluded_jobs=set())
+
+    def diff(self, new_jobs: list[WorkflowJob]) -> list[JobDone | WorkflowJob]:
+        _diff: list[JobDone | WorkflowJob] = []
+        for job in new_jobs:
+            if job.conclusion and job.id not in self.concluded_jobs:
+                _diff.append(JobDone(job.id, job.name, job.conclusion))
+                self.concluded_jobs.add(job.id)
+                continue
+            if job.id not in self.seen_jobs.union(self.concluded_jobs):
+                _diff.append(job)
+                self.seen_jobs.add(job.id)
+        return _diff
 
 
 class RunWatcher(ThreadingActor):
@@ -27,48 +77,42 @@ class RunWatcher(ThreadingActor):
 
     mgr: ActorRef[Manager]
     wf_run: WorkflowRun
+    client: Client
     stop_event: Event
 
-    _new_jobs: set[int]
-    _concluded_jobs: set[int]
+    _state: JobState
 
-    def __init__(self, mgr: ActorRef[Manager], wf_run: WorkflowRun):
+    def __init__(
+        self,
+        mgr: ActorRef[Manager],
+        wf_run: WorkflowRun,
+        client: Client = DEFAULT_CLIENT,
+    ):
         super().__init__()
         self.mgr = mgr
         self.wf_run = wf_run
+        self.client = client
         self.stop_event = mgr.proxy().stop_event.get()
 
-        self._new_jobs = set()
-        self._concluded_jobs = set()
+        self._state = JobState.default()
 
     def watch(self) -> None:
         while not self.stop_event.is_set():
-            jobs_res = flow(
-                _get_workflow_jobs(self.wf_run),
-                IO.from_ioresult,
-                unsafe_perform_io,
-            )
+            jobs_res = perform_io(self.client.get_workflow_jobs)(self.wf_run)
             if not is_successful(jobs_res):
                 log(f"fatal error during workflow run update: {jobs_res.failure()}")
                 self.mgr.stop()
                 break
 
-            for job in jobs_res.unwrap():
-                if job.conclusion and job.id not in self._concluded_jobs:
-                    if not self._tell(JobDone(job.id, job.name, job.conclusion)):
-                        break
-                    self._concluded_jobs.add(job.id)
-                    continue
-                if job.id not in self._new_jobs.union(self._concluded_jobs):
-                    if not self._tell(job):
-                        break
-                    self._new_jobs.add(job.id)
+            for job in self._state.diff(jobs_res.unwrap()):
+                if not self._tell(job):
+                    break
 
-            if self.wf_run.conclusion:
-                self._tell(WorkflowDone(self.wf_run.conclusion))
+            if wf_conclusion := self.wf_run.conclusion:
+                self._tell(WorkflowDone(wf_conclusion))
                 break
 
-            self.stop_event.wait(POLL_INTERVAL)
+            self.stop_event.wait(self.client.poll_interval())
         debug("exiting")
 
     def _tell(self, what: JobDone | WorkflowDone | WorkflowJob) -> bool:
@@ -85,7 +129,7 @@ def _get_active_run(
     if not is_successful(runs_res):
         return Failure(runs_res.failure())
 
-    if not (runs := runs_res.unwrap()) or not (filtered := _filter_runs(opts, runs)):
+    if not (filtered := _filter_runs(opts, runs_res.unwrap())):
         return Retry()
 
     if len(filtered) > 1:
@@ -108,32 +152,19 @@ def _filter_runs(opts: Opts, runs: list[WorkflowRun]) -> list[WorkflowRun]:
     return [run for run in runs if all(predicate(run) for predicate in predicates)]
 
 
-@impure_safe
-def _get_workflow_jobs(wf_run: WorkflowRun) -> list[WorkflowJob]:
-    wf_run.update()
-    return list(wf_run.jobs())
+def get_active_run(
+    repo_id: str,
+    opts: Opts,
+    *,
+    client: Client = DEFAULT_CLIENT,
+    retry_delay: float = 0.5,
+) -> ResultE[WorkflowRun]:
+    repo = client.get_repo(repo_id, opts.gh_pat)
 
+    def _curried_workflow_runs(_repo: IOResultE[Repository]) -> IOResultE[list[WorkflowRun]]:
+        return _repo.bind(lambda __repo: client.get_workflow_runs(__repo, opts.commit_sha))
 
-@impure_safe
-def _get_workflow_runs(repo: Repository, head_sha: str) -> list[WorkflowRun]:
-    return list(repo.get_workflow_runs(head_sha=head_sha))
-
-
-@impure_safe
-def _get_repo(repo_id: str, pat: str) -> Repository:
-    gh_client = Github(auth=Auth.Token(pat))
-    return gh_client.get_repo(repo_id)
-
-
-def get_active_run(repo_id: str, opts: Opts) -> ResultE[WorkflowRun]:
-    repo = _get_repo(repo_id, opts.gh_pat)
-    return retries(10, 0.5)(_get_active_run)(
+    return retries(10, retry_delay)(_get_active_run)(
         opts,
-        lambda: flow(
-            IOResultE[Repository]
-            .from_ioresult(repo)
-            .bind(lambda _repo: _get_workflow_runs(_repo, opts.commit_sha)),
-            IO.from_ioresult,
-            unsafe_perform_io,
-        ),
+        lambda: perform_io(_curried_workflow_runs)(repo),
     )
