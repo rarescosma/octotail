@@ -20,6 +20,9 @@ class CloseRequest(t.NamedTuple):
 class ExitRequest:
     """Sent to the browser to quit."""
 
+    def __eq__(self, other: t.Any) -> bool:
+        return isinstance(other, ExitRequest)
+
 
 type BrowseRequest = VisitRequest | CloseRequest | ExitRequest
 
@@ -33,6 +36,9 @@ class OutputItem(t.NamedTuple):
 
 class WebsocketClosed:
     """Sent by streamers to indicate the closure of a websocket."""
+
+    def __eq__(self, other: t.Any) -> bool:
+        return isinstance(other, WebsocketClosed)
 
 
 type StreamerMsg = OutputItem | WebsocketClosed | None

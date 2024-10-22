@@ -2,6 +2,7 @@
 Routines for pretty formatting the output.
 """
 
+import sys
 import typing as t
 from contextlib import suppress
 from functools import partial
@@ -39,6 +40,7 @@ class Formatter(ThreadingActor):
         self.queue = queue
         self._wheel_idx = 0
         self._color_map = {}
+        self.file = sys.stdout
 
     def _get_color(self, group: str) -> Color:
         if group == "workflow":
@@ -59,10 +61,11 @@ class Formatter(ThreadingActor):
                     case None:
                         break
                     case OutputItem():
-                        print("\n".join(self._handle_item(item)))
-                    case WebsocketClosed():
-                        self.mgr.stop()
-                        break
+                        print("\n".join(self._handle_item(item)), file=self.file)
+                    case _ as obj:
+                        if obj == WebsocketClosed():
+                            self.mgr.stop()
+                            break
         debug("exiting")
 
     def _handle_item(self, item: OutputItem) -> t.Generator[str, None, None]:
@@ -82,15 +85,15 @@ def _decorate_line(line: str, job_name: str, _colored: t.Callable[..., str]) -> 
     if line.startswith("##[group]"):
         unprefixed = line.removeprefix("##[group]")
         rem = _colored(unprefixed, attrs=["bold"])
-        sep = _colored("⎯" * (80 - len(f"remote: [{job_name}]: ") - len(unprefixed) - 6))
-        return ["", f"{_colored('⎯⎯')}  {rem}  {sep}"]
+        sep = _colored("-" * (80 - len(f"remote: [{job_name}]: ") - len(unprefixed) - 6))
+        return ["", f"{_colored('--')}  {rem}  {sep}"]
 
     if line.startswith("##[error]"):
         unprefixed = line.removeprefix("##[error]")
         return ["", colored(f"Error: {unprefixed}", "red", attrs=["bold"], force_color=True), ""]
 
     if line.startswith("##[endgroup]"):
-        sep = _colored("⎯" * (80 - len(f"remote: [{job_name}]: ")))
+        sep = _colored("-" * (80 - len(f"remote: [{job_name}]: ")))
         return [sep, ""]
 
     if line.startswith("##[conclusion]"):
