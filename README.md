@@ -5,6 +5,7 @@
 <a href="https://github.com/rarescosma/octotail/blob/main/UNLICENSE"><img alt="License: Unlicense" src="https://img.shields.io/badge/license-Unlicense-blue.svg"></a>
 <a href="https://pypi.org/project/octotail/"><img alt="PyPI" src="https://img.shields.io/pypi/v/octotail"></a>
 <a href="https://github.com/rarescosma/octotail"><img alt="Code style: black" src="https://img.shields.io/badge/code%20style-black-000000.svg"></a>
+<a href="https://codecov.io/github/rarescosma/octotail"><img alt="Code coverage" src="https://codecov.io/github/rarescosma/octotail/graph/badge.svg?token=3CR6BVTC7O"/></a>
 </p>
 
 Live tail GitHub Action runs on `git push`. It's cursed.
