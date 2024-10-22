@@ -3,11 +3,11 @@ import io
 from unittest.mock import patch
 
 import pytest
-
-from octotail import utils
+from returns.io import impure_safe
 from returns.result import Failure, Success
 
-from octotail.utils import Retry, is_port_open
+from octotail import utils
+from octotail.utils import Retry, is_port_open, perform_io
 
 
 @pytest.mark.parametrize(
@@ -63,6 +63,14 @@ def test_debug(monkeypatch, line: str, debug_on: bool, res: str):
     capture = io.StringIO()
     utils.debug(line, file=capture)
     assert capture.getvalue().strip() == res
+
+
+def test_perform_io():
+    @impure_safe
+    def _inner() -> str:
+        return "foo"
+
+    assert perform_io(_inner)() == Success("foo")
 
 
 @pytest.mark.parametrize(

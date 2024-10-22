@@ -8,19 +8,17 @@ from multiprocessing.queues import JoinableQueue, Queue
 from threading import Event
 
 from pykka import ActorRegistry
-from returns.io import IO
 from returns.pipeline import is_successful
-from returns.unsafe import unsafe_perform_io
 
 from octotail.cli import Opts, entrypoint
 from octotail.git import guess_github_repo
-from octotail.utils import debug, find_free_port, log
+from octotail.utils import debug, find_free_port, log, perform_io
 
 
 def _repo_id(repo: str | None) -> str | None:
     if repo is not None:
         return repo
-    guessed = unsafe_perform_io(IO.from_ioresult(guess_github_repo()))
+    guessed = perform_io(guess_github_repo)()
     if is_successful(guessed):
         return guessed.unwrap()
     debug(f"failed to process git remotes: {guessed.failure()}")

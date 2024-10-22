@@ -10,10 +10,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 import shellingham
-from returns.io import IO, IOResultE
 from returns.pipeline import is_successful
-from returns.result import ResultE
-from returns.unsafe import unsafe_perform_io
 from rich import print as rprint
 from rich.panel import Panel
 from rich.prompt import InvalidResponse, Prompt
@@ -22,7 +19,7 @@ from xdg.BaseDirectory import xdg_data_home
 
 from octotail.cli import NO_FRILLS, NO_RICH, version_callback
 from octotail.git import check_git, get_remotes, get_repo_dir
-from octotail.utils import debug, find_free_port
+from octotail.utils import debug, find_free_port, perform_io
 
 GENERATE_CERT_TRIES = 25
 PROXY_REPOS = Path(xdg_data_home) / "octotail" / "proxy_repos"
@@ -97,13 +94,13 @@ def generate_cert() -> None:
 @app.command()
 def install_proxy_remote() -> None:  # noqa: PLR0912, PLR0915
     """Install an octotail proxy remote for the current git repository."""
-    repo_dir_res = _no_really(get_repo_dir)()
+    repo_dir_res = perform_io(get_repo_dir)()
     if not is_successful(repo_dir_res):
         rprint("fatal: could find the repository directory")
         sys.exit(1)
     repo_dir: Path = repo_dir_res.unwrap()
 
-    remotes_res = _no_really(get_remotes)()
+    remotes_res = perform_io(get_remotes)()
     if not is_successful(remotes_res):
         rprint("fatal: could not list repository remotes")
         sys.exit(1)
@@ -141,14 +138,14 @@ def install_proxy_remote() -> None:  # noqa: PLR0912, PLR0915
         "[green]Cloning the original repo to the proxy remote."
         " You might get asked for your SSH password.[/green]"
     )
-    clone_result = _no_really(check_git)(f"clone --mirror {github_remote.url} {proxy_repo_path}")
+    clone_result = perform_io(check_git)(f"clone --mirror {github_remote.url} {proxy_repo_path}")
     if not is_successful(clone_result):
         rprint(f"fatal: clone failed: {clone_result.failure()}")
         sys.exit(1)
 
     rprint(f"[green]Clone successful. Adding {proxy_repo_path} as the 'proxy' remote.[/green]")
 
-    add_remote = _no_really(check_git)(f"remote add proxy {proxy_repo_path}")
+    add_remote = perform_io(check_git)(f"remote add proxy {proxy_repo_path}")
     if not is_successful(add_remote):
         rprint(f"fatal: could not add the proxy remote: {add_remote.failure()}")
         sys.exit(1)
@@ -199,13 +196,6 @@ def install_proxy_remote() -> None:  # noqa: PLR0912, PLR0915
 
     # ensure hook is executable
     hook_path.chmod(hook_path.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
-
-
-def _no_really[**P, R](fn: t.Callable[P, IOResultE[R]]) -> t.Callable[P, ResultE[R]]:
-    def inner(*args: P.args, **kwargs: P.kwargs) -> ResultE[R]:
-        return unsafe_perform_io(IO.from_ioresult(fn(*args, **kwargs)))
-
-    return inner
 
 
 @app.callback(no_args_is_help=True)

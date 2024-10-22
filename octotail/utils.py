@@ -10,7 +10,9 @@ import typing as t
 from pathlib import Path
 
 from fake_useragent import UserAgent
+from returns.io import IO, IOResultE
 from returns.result import Failure, ResultE, Success
+from returns.unsafe import unsafe_perform_io
 
 RANDOM_UA: str = UserAgent().random
 DEBUG = os.getenv("DEBUG") not in ["0", "false", "False", None]
@@ -53,6 +55,13 @@ def log(
 def debug(msg: str, *, file: t.Any = sys.stderr) -> None:
     if DEBUG:
         log(msg, stack_offset=2, file=file)
+
+
+def perform_io[**P, R](fn: t.Callable[P, IOResultE[R]]) -> t.Callable[P, ResultE[R]]:
+    def inner(*args: P.args, **kwargs: P.kwargs) -> ResultE[R]:
+        return unsafe_perform_io(IO.from_ioresult(fn(*args, **kwargs)))
+
+    return inner
 
 
 def retries[
