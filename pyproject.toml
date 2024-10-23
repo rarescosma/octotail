@@ -95,6 +95,7 @@ lint.ignore = ["B010", "C901", "COM", "D", "E501", "TRY003"]
 [tool.coverage.run]
 branch = true
 source = ["octotail"]
+omit = ["main.py", "x.py"]
 
 [tool.coverage.report]
 show_missing = true
