@@ -5,16 +5,16 @@ import copy
 import json
 import multiprocessing as mp
 import sys
+import typing as t
 from argparse import Namespace
 from contextlib import suppress
+from dataclasses import dataclass, field
 from multiprocessing.queues import Queue
 from pathlib import Path
 from queue import Empty
 from threading import Event
-from typing import cast
 
-from mitmproxy.tools.main import mitmdump
-from pykka import ActorRef, ThreadingActor
+from pykka import ActorRef, ThreadingActor, traversable
 from returns.converters import result_to_maybe
 from returns.maybe import Maybe, Nothing, Some
 from returns.pipeline import flow
@@ -34,26 +34,51 @@ MARKERS = Namespace(
 )
 
 
+@dataclass
+class BufferState:
+    """Holds output buffer state."""
+
+    buffer: list[str] = field(default_factory=list)
+    old_buffer: list[str] = field(default_factory=list)
+    old_line: str = "-"
+
+    def process_line(self, line: str) -> Maybe[WsSub]:
+        ret: Maybe[WsSub] = Maybe.from_optional(None)
+        if line:
+            self.buffer.append(line)
+        elif self.old_line == "" and self.buffer:
+            ret = _extract_ws_sub("".join(self.buffer), "".join(self.old_buffer))
+            self.old_buffer = copy.deepcopy(self.buffer)
+            self.buffer = []
+        else:
+            self.buffer.append(line)
+        self.old_line = line
+        return ret
+
+
 class ProxyWatcher(ThreadingActor):
     """Watches for websocket subscriptions done through the mitmproxy."""
 
     mgr: ActorRef[Manager]
     port: int
-    _stop_event: Event
+    stop_event: Event
+
+    queue: Queue[str] = traversable(mp.Queue())
+
+    _state: BufferState
     _proxy_ps: mp.Process
-    _q: Queue[str]
 
     def __init__(self, mgr: ActorRef[Manager] | None, port: int):
         super().__init__()
         if mgr is not None:
             self.mgr = mgr
-            self._stop_event = mgr.proxy().stop_event.get()
+            self.stop_event = mgr.proxy().stop_event.get()
         self.port = port
+        self._state = BufferState()
 
     def on_start(self) -> None:
-        self._q = mp.Queue()
         MITM_CONFIG_DIR.mkdir(exist_ok=True, parents=True)
-        self._proxy_ps = mp.Process(target=_mitmdump_wrapper, args=(self._q, self.port))
+        self._proxy_ps = run_mitmdump(self.queue, self.port)
         self._proxy_ps.start()
 
     def on_stop(self) -> None:
@@ -61,24 +86,14 @@ class ProxyWatcher(ThreadingActor):
         self._proxy_ps.join()
 
     def watch(self) -> None:
-        if not _check_liveness(self._proxy_ps, self.port):
+        if not _check_liveness(self._proxy_ps, self.port).unwrap():
             self.mgr.tell("fatal: proxy didn't go live")
             self.mgr.stop()
 
-        old_line, buffer = "-", []
-        old_buffer: list[str] = []
-        while not self._stop_event.is_set():
+        while not self.stop_event.is_set():
             with suppress(Empty):
-                line = self._q.get(timeout=1).strip()
-                if line:
-                    buffer.append(line)
-                elif old_line == "" and buffer:
-                    _extract_ws_sub("".join(buffer), "".join(old_buffer)).apply(Some(self.mgr.tell))
-                    old_buffer = copy.deepcopy(buffer)
-                    buffer = []
-                else:
-                    buffer.append(line)
-                old_line = line
+                line = self.queue.get(timeout=0.25).strip()
+                self._state.process_line(line).apply(Some(self.mgr.tell))
         debug("exiting")
 
 
@@ -96,7 +111,7 @@ def _extract_ws_sub(buffer: str, old_buffer: str) -> Maybe[WsSub]:
             lambda job_id: WsSub(
                 url=old_buffer[old_buffer.index(MARKERS.ws_host) :],
                 subs=buffer,
-                job_id=cast(int, job_id),
+                job_id=t.cast(int, job_id),
             )
         ),
         result_to_maybe,
@@ -111,19 +126,30 @@ def _extract_job_id(buffer: str) -> int:
     return int(good.split(":")[1])
 
 
-def _mitmdump_wrapper(queue: Queue[str], port: int) -> None:
-    sys.argv = (
-        f"mitmdump --flow-detail=4 --no-rawtcp -p {port} --set confdir={MITM_CONFIG_DIR}".split()
-    )
-    # hijack .isatty and always return False to disable colors & shenanigans
-    setattr(sys.stdout, "isatty", lambda: False)
-    # hijack .write so lines go to our queue instead
-    setattr(sys.stdout, "write", queue.put)
-    mitmdump()
+def run_mitmdump(queue: Queue[str], port: int) -> mp.Process:  # pragma: no cover
+    def _inner(_queue: Queue[str], _port: int) -> None:
+        from mitmproxy.tools.main import mitmdump
+
+        sys.argv = [
+            "mitmdump",
+            "--flow-detail=4",
+            "--no-rawtcp",
+            "-p",
+            str(_port),
+            "--set",
+            f"confdir={MITM_CONFIG_DIR}",
+        ]
+        # hijack .isatty and always return False to disable colors & shenanigans
+        setattr(sys.stdout, "isatty", lambda: False)
+        # hijack .write so lines go to our queue instead
+        setattr(sys.stdout, "write", _queue.put)
+        mitmdump()
+
+    return mp.Process(target=_inner, args=(queue, port))
 
 
 @retries(50, 0.2)
-def _check_liveness(proxy_ps: mp.Process, port: int) -> ResultE[bool] | Retry:
+def _check_liveness(proxy_ps: mp.Process, port: int) -> ResultE[bool] | Retry:  # pragma: no cover
     if not is_port_open(port):
         return Success(True)
     if not proxy_ps.is_alive():
