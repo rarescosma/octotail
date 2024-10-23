@@ -1,5 +1,6 @@
 import socket
 from contextlib import contextmanager
+from copy import deepcopy
 
 import pytest
 
@@ -21,3 +22,25 @@ def bound_socket():
                 sock.close()
 
     return _bound_socket
+
+
+class MockQueue:
+    def __init__(self):
+        self.inner = []
+
+    def put_nowait(self, val):
+        self.inner.append(val)
+
+    def put(self, val):
+        self.put_nowait(val)
+
+    def report(self):
+        return deepcopy(self.inner)
+
+
+@pytest.fixture(scope="function")
+def mock_queue():
+    def factory():
+        return MockQueue()
+
+    return factory

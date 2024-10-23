@@ -1,7 +1,6 @@
 import importlib
 import threading
 import typing as t
-from copy import deepcopy
 from unittest.mock import MagicMock
 
 import github
@@ -27,20 +26,6 @@ class WorkflowJob(t.NamedTuple):
     @property
     def name(self) -> str:
         return str(self.id)
-
-
-class MockQueue:
-    def __init__(self):
-        self.inner = []
-
-    def put_nowait(self, val):
-        self.inner.append(val)
-
-    def put(self, val):
-        self.put_nowait(val)
-
-    def report(self):
-        return deepcopy(self.inner)
 
 
 @pytest.mark.parametrize(
@@ -83,13 +68,15 @@ class MockQueue:
         ),
     ],
 )
-def test_message_to_queues(monkeypatch, messages, expected_browse_queue, expected_output_queue):
+def test_message_to_queues(
+    monkeypatch, mock_queue, messages, expected_browse_queue, expected_output_queue
+):
     monkeypatch.setattr(github.WorkflowJob, "WorkflowJob", WorkflowJob)
     monkeypatch.setattr(octotail.streamer, "run_streamer", MagicMock())
     importlib.reload(octotail.manager)
 
-    browse_queue = MockQueue()
-    output_queue = MockQueue()
+    browse_queue = mock_queue()
+    output_queue = mock_queue()
     manager = octotail.manager.Manager.start(browse_queue, output_queue, threading.Event())
 
     try:
