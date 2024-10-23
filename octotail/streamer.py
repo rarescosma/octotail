@@ -23,7 +23,7 @@ WS_HEADERS = {
 }
 
 
-def run_streamer(ws_sub: WsSub, queue: Queue[StreamerMsg]) -> mp.Process:
+def run_streamer(ws_sub: WsSub, queue: Queue[StreamerMsg]) -> mp.Process:  # pragma: no cover
     process = mp.Process(target=_streamer, args=(ws_sub, queue))
     process.start()
     return process
@@ -34,7 +34,7 @@ def _streamer(ws_sub: WsSub, queue: Queue[StreamerMsg]) -> None:
     aio.set_event_loop(loop)
     try:
         loop.run_until_complete(_stream_it(ws_sub, queue))
-    except KeyboardInterrupt:
+    except KeyboardInterrupt:  # pragma: no cover
         loop.close()
 
 
@@ -49,11 +49,6 @@ async def _stream_it(ws_sub: WsSub, queue: Queue[StreamerMsg]) -> None:
                 _extract_lines(msg).apply(
                     Success(lambda _lines: queue.put(OutputItem(job_name, _lines)))
                 )
-        except aio.CancelledError:
-            log("cancelled")
-            if websocket:
-                await websocket.close()
-            return
         except ConnectionClosedError as e:
             log(f"fatal error during websockets connection: {e}")
             queue.put(WebsocketClosed())
