@@ -24,7 +24,7 @@ class GitRemote(t.NamedTuple):
 
 
 @impure_safe
-def check_git(cmd: str, *, cwd: Path = Path()) -> str:
+def check_git(cmd: str, *, cwd: Path = Path()) -> str:  # pragma: no cover
     return check_output(["git", *cmd.split()], stderr=DEVNULL, cwd=cwd).decode().strip()
 
 
@@ -70,5 +70,5 @@ def guess_github_repo() -> IOResultE[str]:
     )
 
 
-def get_repo_dir() -> IOResultE[Path]:
+def get_repo_dir() -> IOResultE[Path]:  # pragma: no cover
     return flow(check_git("rev-parse --sq --show-toplevel"), map_(Path))
