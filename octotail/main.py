@@ -27,7 +27,7 @@ def _repo_id(repo: str | None) -> str | None:
 
 @entrypoint
 def _main(opts: Opts) -> int:
-    from octotail.browser import BrowserWatcher
+    from octotail.browser import BrowserWatcher, start_controller
     from octotail.fmt import Formatter
     from octotail.gh import RunWatcher, get_active_run
     from octotail.manager import Manager
@@ -66,7 +66,7 @@ def _main(opts: Opts) -> int:
 
     try:
         run_watcher.proxy().watch().join(
-            browser_watcher.proxy().watch(),
+            browser_watcher.proxy().watch(target=start_controller),
             proxy_watcher.proxy().watch(),
             formatter.proxy().print_lines(),
         ).get()

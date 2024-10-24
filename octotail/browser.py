@@ -74,15 +74,15 @@ class BrowserWatcher(ThreadingActor):
         self.inbox = inbox
         self.mgr = mgr
 
-    def watch(self) -> None:
-        browser = mp.Process(target=_start_controller, args=(self.opts, self.inbox))
+    def watch(self, target: t.Callable[[Opts, Queue[BrowseRequest]], None]) -> None:
+        browser = mp.Process(target=target, args=(self.opts, self.inbox))
         browser.start()
         browser.join()
         self.mgr.stop()
         debug("exiting")
 
 
-def _start_controller(opts: Opts, inbox: Queue[BrowseRequest]) -> None:
+def start_controller(opts: Opts, inbox: Queue[BrowseRequest]) -> None:  # pragma: no cover
     loop = aio.new_event_loop()
     aio.set_event_loop(loop)
     try:
