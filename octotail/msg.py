@@ -4,11 +4,16 @@ import typing as t
 from dataclasses import dataclass
 
 
-class ProxyLive:
-    """Sent by the proxy watcher to indicate the proxy is live."""
-
+class _Marker:
     def __eq__(self, other: t.Any) -> bool:
-        return isinstance(other, ProxyLive)
+        return isinstance(other, self.__class__)
+
+    def __repr__(self) -> str:
+        return self.__class__.__name__
+
+
+class ProxyLive(_Marker):
+    """Sent by the proxy watcher to indicate the proxy is live."""
 
 
 class VisitRequest(t.NamedTuple):
@@ -24,11 +29,8 @@ class CloseRequest(t.NamedTuple):
     job_id: int
 
 
-class ExitRequest:
+class ExitRequest(_Marker):
     """Sent to the browser to quit."""
-
-    def __eq__(self, other: t.Any) -> bool:
-        return isinstance(other, ExitRequest)
 
 
 type BrowseRequest = VisitRequest | CloseRequest | ExitRequest | ProxyLive
@@ -41,11 +43,8 @@ class OutputItem(t.NamedTuple):
     lines: list[str]
 
 
-class WebsocketClosed:
+class WebsocketClosed(_Marker):
     """Sent by streamers to indicate the closure of a websocket."""
-
-    def __eq__(self, other: t.Any) -> bool:
-        return isinstance(other, WebsocketClosed)
 
 
 type StreamerMsg = OutputItem | WebsocketClosed | None
