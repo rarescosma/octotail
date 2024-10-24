@@ -94,6 +94,7 @@ def test_proxy_watcher(monkeypatch, lines, check_liveness_return, tell_calls):
         while len(mgr.tell.call_args_list) < len(tell_calls):
             time.sleep(0.001)
         stop_event.set()
+        thread.join()
     finally:
         sut.stop()
 

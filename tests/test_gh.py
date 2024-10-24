@@ -206,6 +206,7 @@ def test_run_watcher(
     try:
         thread = threading.Thread(target=lambda: sut.proxy().watch().get())
         thread.start()
+        thread.join()
     finally:
         sut.stop()
 

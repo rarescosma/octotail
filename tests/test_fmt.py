@@ -97,5 +97,6 @@ def test_print_lines(items, output, called_stop):
         assert _bleach(capture.getvalue()).strip() == output
         if called_stop:
             mgr.stop.assert_called_once()
+        thread.join()
     finally:
         sut.stop()

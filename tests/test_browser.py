@@ -42,6 +42,7 @@ def test_calls_mgr_stop_on_early_exit(monkeypatch):
     try:
         thread = threading.Thread(target=_start_watch)
         thread.start()
+        thread.join()
     finally:
         sut.stop()
 
