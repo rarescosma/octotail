@@ -91,7 +91,7 @@ lint.extend-select = [
   "UP",
   "W",
 ]
-lint.ignore = ["B010", "C901", "COM", "D", "E501", "TRY003"]
+lint.ignore = ["B010", "C901", "COM", "D", "E501", "TRY003", "PLR0912"]
 
 [tool.pytest.ini_options]
 asyncio_default_fixture_loop_scope = "function"

@@ -14,6 +14,7 @@ from octotail.msg import (
     ExitRequest,
     JobDone,
     OutputItem,
+    ProxyLive,
     StreamerMsg,
     VisitRequest,
     WorkflowDone,
@@ -22,7 +23,7 @@ from octotail.msg import (
 from octotail.streamer import run_streamer
 from octotail.utils import debug
 
-type MgrMessage = WorkflowJob | WsSub | JobDone | WorkflowDone
+type MgrMessage = WorkflowJob | WsSub | JobDone | WorkflowDone | ProxyLive
 
 
 class Manager(ThreadingActor):
@@ -53,6 +54,9 @@ class Manager(ThreadingActor):
         debug(f"{message!r}")
 
         match message:
+            case ProxyLive() as proxy_live:
+                self.browse_queue.put_nowait(proxy_live)
+
             case WorkflowJob() as job:
                 self.browse_queue.put_nowait(VisitRequest(job.html_url, job.id))
                 self.job_map[job.id] = job.name

@@ -92,7 +92,7 @@ def generate_cert() -> None:
 
 
 @app.command()
-def install_proxy_remote() -> None:  # noqa: PLR0912, PLR0915
+def install_proxy_remote() -> None:  # noqa: PLR0915
     """Install an octotail proxy remote for the current git repository."""
     repo_dir_res = perform_io(get_repo_dir)()
     if not is_successful(repo_dir_res):

@@ -20,7 +20,7 @@ from xdg.BaseDirectory import xdg_cache_home
 
 from octotail.cli import Opts
 from octotail.manager import Manager
-from octotail.msg import BrowseRequest, CloseRequest, ExitRequest, VisitRequest
+from octotail.msg import BrowseRequest, CloseRequest, ExitRequest, ProxyLive, VisitRequest
 from octotail.utils import RANDOM_UA, debug, log
 
 COOKIE_JAR = Path(xdg_cache_home) / "octotail" / "gh-cookies.json"
@@ -137,11 +137,11 @@ async def _controller(
 ) -> None:
     tasks = set()
     open_pages: dict[int, Page] = {}
-    in_progress = aio.Event()
+    ready = aio.Event()
     visit_queue: deque[VisitRequest] = deque()
 
     def _schedule_visit(_visit_req: VisitRequest) -> None:
-        in_progress.set()
+        ready.clear()
         _task = aio.create_task(_visit(_visit_req))
         tasks.add(_task)
         _task.add_done_callback(tasks.discard)
@@ -154,6 +154,17 @@ async def _controller(
     start_page = (await browser.pages())[0]
     await stealth(start_page)
 
+    # buffer visit requests until the proxy goes live
+    while True:
+        with suppress(Empty):
+            match inbox.get_nowait():
+                case VisitRequest() as visit_req:
+                    visit_queue.appendleft(visit_req)
+                case ProxyLive():
+                    ready.set()
+                    break
+        await aio.sleep(sleep_time)
+
     if not await _nom_cookies(cookie_jar.read(), start_page):
         log("logging in to GitHub")
         cookies = await _login_flow(start_page, opts)
@@ -165,7 +176,7 @@ async def _controller(
 
     while True:
         with suppress(Empty):
-            if not in_progress.is_set() and visit_queue:
+            if ready.is_set() and visit_queue:
                 _schedule_visit(visit_queue.pop())
                 continue
 
@@ -177,14 +188,13 @@ async def _controller(
                 case CloseRequest() as close_req:
                     if close_req.job_id in open_pages:
                         await open_pages[close_req.job_id].close()
-                    in_progress.clear()
+                    ready.set()
 
                 case VisitRequest() as visit_req:
-                    if in_progress.is_set():
-                        visit_queue.appendleft(visit_req)
-                    else:
+                    if ready.is_set():
                         _schedule_visit(visit_req)
-
+                    else:
+                        visit_queue.appendleft(visit_req)
         await aio.sleep(sleep_time)
 
 

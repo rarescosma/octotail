@@ -13,6 +13,7 @@ from octotail.msg import (
     ExitRequest,
     JobDone,
     OutputItem,
+    ProxyLive,
     VisitRequest,
     WorkflowDone,
     WsSub,
@@ -33,6 +34,7 @@ class WorkflowJob(t.NamedTuple):
     [
         ([], [], []),
         (["bogus"], [], []),
+        ([ProxyLive()], [ProxyLive()], []),
         (
             [
                 WorkflowJob(html_url="https://foo.bar", id=123),

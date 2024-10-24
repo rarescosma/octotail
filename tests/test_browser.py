@@ -20,7 +20,7 @@ from octotail.browser import (
     _nom_cookies,
 )
 from octotail.cli import Opts
-from octotail.msg import CloseRequest, ExitRequest, VisitRequest
+from octotail.msg import CloseRequest, ExitRequest, ProxyLive, VisitRequest
 
 
 @pytest.mark.asyncio
@@ -158,7 +158,7 @@ async def test_controller_login_flow(
     start_page.cookies.return_value = page_cookies
     browser.pages.return_value = [start_page]
     jar_path = tmp_path / "cookies"
-    inbox = mock_queue()
+    inbox = mock_queue([ProxyLive()])
     cookie_jar = CookieJar(path=jar_path, user="foo")
     cookie_jar.save(jar_cookies)
 
@@ -184,8 +184,10 @@ async def test_controller_login_flow(
 @pytest.mark.parametrize(
     "inbox_items,",
     [
-        [],
+        ["bogus_message", ProxyLive()],
+        [ProxyLive()],
         [
+            ProxyLive(),
             VisitRequest(url="foo", job_id=1),
             VisitRequest(url="bar", job_id=2),
             "bogus_item",
@@ -197,6 +199,16 @@ async def test_controller_login_flow(
             VisitRequest(url="nop", job_id=5),
             CloseRequest(job_id=4),
             CloseRequest(job_id=5),
+        ],
+        [
+            VisitRequest(url="foo", job_id=1),
+            VisitRequest(url="bar", job_id=2),
+            "bogus_item",
+            ProxyLive(),
+            CloseRequest(job_id=1),
+            VisitRequest(url="baz", job_id=3),
+            CloseRequest(job_id=2),
+            CloseRequest(job_id=3),
         ],
     ],
 )

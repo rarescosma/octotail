@@ -4,6 +4,13 @@ import typing as t
 from dataclasses import dataclass
 
 
+class ProxyLive:
+    """Sent by the proxy watcher to indicate the proxy is live."""
+
+    def __eq__(self, other: t.Any) -> bool:
+        return isinstance(other, ProxyLive)
+
+
 class VisitRequest(t.NamedTuple):
     """Sent to the browser to request visiting of a job page."""
 
@@ -24,7 +31,7 @@ class ExitRequest:
         return isinstance(other, ExitRequest)
 
 
-type BrowseRequest = VisitRequest | CloseRequest | ExitRequest
+type BrowseRequest = VisitRequest | CloseRequest | ExitRequest | ProxyLive
 
 
 class OutputItem(t.NamedTuple):

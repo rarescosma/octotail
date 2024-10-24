@@ -8,7 +8,7 @@ from returns.result import Success
 
 import octotail.mitm
 import octotail.utils
-from octotail.msg import WsSub
+from octotail.msg import ProxyLive, WsSub
 
 
 @pytest.mark.parametrize(
@@ -46,7 +46,7 @@ def test_buffer_state(monkeypatch, lines, subs):
 @pytest.mark.parametrize(
     "lines, check_liveness_return, tell_calls",
     [
-        ([""], Success(True), []),
+        ([""], Success(True), [call(ProxyLive())]),
         ([""], Success(False), [call("fatal: proxy didn't go live")]),
         (
             [
@@ -59,6 +59,7 @@ def test_buffer_state(monkeypatch, lines, subs):
             ],
             Success(True),
             [
+                call(ProxyLive()),
                 call(
                     WsSub(
                         url="alive.github.com:443/foobar",
@@ -66,7 +67,7 @@ def test_buffer_state(monkeypatch, lines, subs):
                         job_id=31737494203,
                         job_name=None,
                     )
-                )
+                ),
             ],
         ),
     ],

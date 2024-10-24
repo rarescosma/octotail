@@ -23,7 +23,7 @@ from returns.result import ResultE, Success, safe
 from xdg.BaseDirectory import xdg_data_home
 
 from octotail.manager import Manager
-from octotail.msg import WsSub
+from octotail.msg import ProxyLive, WsSub
 from octotail.utils import Retry, debug, is_port_open, retries
 
 MITM_CONFIG_DIR = Path(xdg_data_home) / "octotail" / "mitmproxy"
@@ -86,7 +86,9 @@ class ProxyWatcher(ThreadingActor):
         self._proxy_ps.join()
 
     def watch(self) -> None:
-        if not _check_liveness(self._proxy_ps, self.port).unwrap():
+        if _check_liveness(self._proxy_ps, self.port).unwrap():
+            self.mgr.tell(ProxyLive())
+        else:
             self.mgr.tell("fatal: proxy didn't go live")
             self.mgr.stop()
 
