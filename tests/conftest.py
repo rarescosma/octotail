@@ -7,7 +7,7 @@ from queue import Empty
 import pytest
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def bound_socket():
     @contextmanager
     def _bound_socket(port: int):
@@ -18,7 +18,7 @@ def bound_socket():
             sock.listen()
             yield sock
         except Exception as e:
-            pytest.fail(f"Failed to bind to port {port}: {str(e)}")
+            pytest.fail(f"Failed to bind to port {port}: {e}")
         finally:
             if sock:
                 sock.close()
@@ -40,7 +40,7 @@ class MockQueue:
         try:
             return self.inner.popleft()
         except IndexError:
-            raise Empty
+            raise Empty from None
 
     def get(self):
         return self.get_nowait()
@@ -49,7 +49,7 @@ class MockQueue:
         return deepcopy(list(self.inner))
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def mock_queue():
     def factory(values: list | None = None):
         return MockQueue(values)

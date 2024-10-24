@@ -35,7 +35,7 @@ class MockJob(t.NamedTuple):
 
 
 @pytest.mark.parametrize(
-    "opts, input_runs, output_runs",
+    ("opts", "input_runs", "output_runs"),
     [
         (MockOpts(), [], []),
         (MockOpts(), [MockRun(status="queued")], [MockRun(status="queued")]),
@@ -68,7 +68,7 @@ def test_filter_runs(opts: Opts, input_runs, output_runs):
 
 
 @pytest.mark.parametrize(
-    "list_results, expected",
+    ("list_results", "expected"),
     [
         ([IOFailure("foo")], Failure("foo")),
         ([IOSuccess([])] * 20, Failure(RuntimeError("retries exceeded"))),
@@ -96,8 +96,7 @@ def test_filter_runs(opts: Opts, input_runs, output_runs):
 )
 def test_get_active_run(list_results, expected):
     def __generator():
-        for result in list_results:
-            yield result
+        yield from list_results
 
     _generator = __generator()
 
@@ -117,7 +116,7 @@ def test_get_active_run(list_results, expected):
 
 
 @pytest.mark.parametrize(
-    "batches, result_batches",
+    ("batches", "result_batches"),
     [
         ([], []),
         (
@@ -151,12 +150,12 @@ def test_get_active_run(list_results, expected):
 def test_job_state(batches, result_batches):
     assert len(batches) == len(result_batches)
     sut = gh.JobState.default()
-    for batch, result in zip(batches, result_batches):
+    for batch, result in zip(batches, result_batches, strict=False):
         assert sut.diff(batch) == result
 
 
 @pytest.mark.parametrize(
-    "stop_is_set, jobs_res, wf_conclusions, mgr_is_alive, tell_calls",
+    ("stop_is_set", "jobs_res", "wf_conclusions", "mgr_is_alive", "tell_calls"),
     [
         (False, IOResult.from_failure(RuntimeError("nope!")), [], True, []),
         (

@@ -7,11 +7,11 @@ from returns.io import impure_safe
 from returns.result import Failure, Success
 
 from octotail import utils
-from octotail.utils import Retry, is_port_open, perform_io
+from octotail.utils import Retry, perform_io
 
 
 @pytest.mark.parametrize(
-    "f, xs, res",
+    ("f", "xs", "res"),
     [
         (lambda a: [a, a + 1], [1, 2, 3], [1, 2, 2, 3, 3, 4]),
         (lambda a: [a], [1, 2, 3], [1, 2, 3]),
@@ -24,7 +24,7 @@ def test_flatmap(f, xs, res):
 
 
 @pytest.mark.parametrize(
-    "line, skip_prefix, res",
+    ("line", "skip_prefix", "res"),
     [
         ("", True, ""),
         ("trivial", True, "trivial"),
@@ -51,7 +51,7 @@ def test_log_offstack():
 
 
 @pytest.mark.parametrize(
-    "line, debug_on, res",
+    ("line", "debug_on", "res"),
     [
         ("trivial", False, ""),
         ("", True, "[test_utils:test_debug]:"),
@@ -74,7 +74,7 @@ def test_perform_io():
 
 
 @pytest.mark.parametrize(
-    "num_tries, values, res",
+    ("num_tries", "values", "res"),
     [
         (0, [], Failure(RuntimeError("retries exceeded"))),
         (1, [Success("lucky one")], Success("lucky one")),
@@ -96,8 +96,7 @@ def test_perform_io():
 )
 def test_retries(num_tries: int, values: list, res):
     def __generator():
-        for val in values:
-            yield val
+        yield from values
 
     _generator = __generator()
 
@@ -126,7 +125,7 @@ def test_cannot_find_free_port(bound_socket):
 
 
 @pytest.mark.parametrize(
-    "xs, res",
+    ("xs", "res"),
     [
         ([], []),
         (["", ""], [""]),

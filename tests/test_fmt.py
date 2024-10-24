@@ -34,7 +34,7 @@ def test_get_color():
 
 
 @pytest.mark.parametrize(
-    "items, output, called_stop",
+    ("items", "output", "called_stop"),
     [
         ([None], "", False),
         (

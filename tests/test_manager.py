@@ -30,7 +30,7 @@ class WorkflowJob(t.NamedTuple):
 
 
 @pytest.mark.parametrize(
-    "messages, expected_browse_queue, expected_output_queue",
+    ("messages", "expected_browse_queue", "expected_output_queue"),
     [
         ([], [], []),
         (["bogus"], [], []),

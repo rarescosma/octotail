@@ -31,11 +31,7 @@ class MockAiter:
 
     def report(self):
         if not self.in_vals:
-            rep = []
-            for child in self.out_vals:
-                if isinstance(child, type(self)):
-                    rep.append(child.report())
-            return rep
+            return [child.report() for child in self.out_vals if isinstance(child, type(self))]
 
         return deepcopy(self.in_vals)
 
@@ -45,7 +41,7 @@ def _pack_lines(lines: list[str]) -> str:
 
 
 @pytest.mark.parametrize(
-    "ws, a_iter, expected_queue, expected_url, expected_a_iter_report",
+    ("ws", "a_iter", "expected_queue", "expected_url", "expected_a_iter_report"),
     [
         (
             WsSub(url="", subs="sub_message", job_id=123),

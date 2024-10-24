@@ -5,11 +5,11 @@ from typer import BadParameter, Typer
 from typer.testing import CliRunner
 
 from octotail import __version__
-from octotail.cli import Opts, _noop, _post_init, _repo_callback, _sha_callback, entrypoint
+from octotail.cli import Opts, _noop, _post_init, _repo_callback, _sha_callback
 
 
 @pytest.mark.parametrize(
-    "inp, res",
+    ("inp", "res"),
     [
         ("", BadParameter),
         ("not-40-chars-long", BadParameter),
@@ -18,7 +18,7 @@ from octotail.cli import Opts, _noop, _post_init, _repo_callback, _sha_callback,
     ],
 )
 def test_sha_callback(inp, res):
-    if type(res) == type and issubclass(res, Exception):
+    if isinstance(res, type) and issubclass(res, Exception):
         with pytest.raises(res):
             _sha_callback(inp)
     else:
@@ -26,7 +26,7 @@ def test_sha_callback(inp, res):
 
 
 @pytest.mark.parametrize(
-    "inp, res",
+    ("inp", "res"),
     [
         (None, None),
         ("not-a-slash", BadParameter),
@@ -39,7 +39,7 @@ def test_sha_callback(inp, res):
     ],
 )
 def test_repo_callback(inp, res):
-    if type(res) == type and issubclass(res, Exception):
+    if isinstance(res, type) and issubclass(res, Exception):
         with pytest.raises(res):
             _repo_callback(inp)
     else:

@@ -93,6 +93,9 @@ lint.extend-select = [
 ]
 lint.ignore = ["B010", "C901", "COM", "D", "E501", "TRY003", "PLR0912"]
 
+[tool.ruff.lint.per-file-ignores]
+"**/tests/*" = ["PLR0913", "PLR2004"]
+
 [tool.pytest.ini_options]
 asyncio_default_fixture_loop_scope = "function"
 

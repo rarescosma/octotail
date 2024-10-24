@@ -78,7 +78,7 @@ def test_cookie_jar(tmp_path):
 
 
 @pytest.mark.parametrize(
-    "cookies, expected, set_cookies",
+    ("cookies", "expected", "set_cookies"),
     [
         ([], False, []),
         ([{"oops": "i am close to expiry", "expires": int(time.time()) + 3600}], False, []),
@@ -98,7 +98,7 @@ async def test_nom_cookies(cookies, expected, set_cookies):
 
 
 @pytest.mark.parametrize(
-    "opts, otp_enabled, expected",
+    ("opts", "otp_enabled", "expected"),
     [
         (
             Namespace(gh_user="foo", gh_pass="bar"),
@@ -134,7 +134,7 @@ async def test_login_flow(opts: Opts, otp_enabled: bool, expected):
 
 
 @pytest.mark.parametrize(
-    "opts, jar_cookies, page_cookies, close_called",
+    ("opts", "jar_cookies", "page_cookies", "close_called"),
     [
         (Namespace(gh_user="foo", gh_pass="bar"), [], "##success", False),
         (Namespace(gh_user="foo", gh_pass="bar"), [], RuntimeError("nope"), True),

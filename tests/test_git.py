@@ -8,7 +8,7 @@ from octotail.git import GitRemote
 
 
 @pytest.mark.parametrize(
-    "input_lines, expected",
+    ("input_lines", "expected"),
     [
         ("", Success([])),
         (
@@ -59,7 +59,7 @@ def test_parse_remotes(input_lines, expected):
 
 
 @pytest.mark.parametrize(
-    "input_remotes, expected",
+    ("input_remotes", "expected"),
     [
         ([], Failure(RuntimeError("no remotes"))),
         (["foo", "bar"], Failure(RuntimeError("too many remotes"))),
@@ -76,7 +76,7 @@ def test_limit_remotes(input_remotes, expected):
 
 
 @pytest.mark.parametrize(
-    "input_remote, expected",
+    ("input_remote", "expected"),
     [
         (GitRemote(name="foo", url=""), Failure(RuntimeError("failed to extract"))),
         (
@@ -99,7 +99,7 @@ def test_extract_github_repo(input_remote, expected):
 
 
 @pytest.mark.parametrize(
-    "check_git_lines, filter_fn, expected",
+    ("check_git_lines", "filter_fn", "expected"),
     [
         (IOSuccess(""), lambda _: True, IOSuccess([])),
         (
@@ -114,7 +114,8 @@ def test_extract_github_repo(input_remote, expected):
         ),
         (
             IOSuccess(
-                "gh-priv git@github.com:getbettr/octotail-priv.git\norigin  git@github.com:rarescosma/octotail.git"
+                "gh-priv git@github.com:getbettr/octotail-priv.git"
+                "\norigin  git@github.com:rarescosma/octotail.git"
             ),
             lambda r: r.name == "origin",
             IOSuccess([GitRemote(name="origin", url="git@github.com:rarescosma/octotail.git")]),
@@ -135,7 +136,7 @@ def test_get_remotes(monkeypatch, check_git_lines, filter_fn, expected):
 
 
 @pytest.mark.parametrize(
-    "check_git_lines, expected",
+    ("check_git_lines", "expected"),
     [
         (
             IOSuccess(""),

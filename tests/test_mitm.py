@@ -12,7 +12,7 @@ from octotail.msg import ProxyLive, WsSub
 
 
 @pytest.mark.parametrize(
-    "lines, subs",
+    ("lines", "subs"),
     [
         ([], []),
         (["", " "], []),
@@ -44,7 +44,7 @@ def test_buffer_state(monkeypatch, lines, subs):
 
 
 @pytest.mark.parametrize(
-    "lines, check_liveness_return, tell_calls",
+    ("lines", "check_liveness_return", "tell_calls"),
     [
         ([""], Success(True), [call(ProxyLive())]),
         ([""], Success(False), [call("fatal: proxy didn't go live")]),
