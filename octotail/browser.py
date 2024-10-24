@@ -87,7 +87,14 @@ def start_controller(opts: Opts, inbox: Queue[BrowseRequest]) -> None:  # pragma
     aio.set_event_loop(loop)
     try:
         browser = loop.run_until_complete(_launch_browser(opts))
-        loop.run_until_complete(_controller(browser, opts, inbox))
+        loop.run_until_complete(
+            _controller(
+                browser,
+                opts=opts,
+                inbox=inbox,
+                cookie_jar=CookieJar(opts.gh_user),
+            )
+        )
     except KeyboardInterrupt:
         loop.close()
 
@@ -104,10 +111,28 @@ async def _launch_browser(opts: Opts) -> Browser:
     )
 
 
+class CookieJar(t.NamedTuple):
+    """Provides read/write access to user-scoped cookies."""
+
+    user: str
+    path: Path = COOKIE_JAR
+
+    def save(self, cookies: Cookies) -> None:
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        existing = json.loads(self.path.read_text()) if self.path.exists() else {}
+        self.path.write_text(json.dumps({**existing, self.user: cookies}))
+
+    def read(self) -> Cookies | None:
+        if not self.path.exists():
+            return None
+        return t.cast(Cookies, json.loads(self.path.read_text()).get(self.user))
+
+
 async def _controller(
     browser: Browser,
     opts: Opts,
     inbox: Queue[BrowseRequest],
+    cookie_jar: CookieJar,
     sleep_time: float = 0.5,
 ) -> None:
     tasks = set()
@@ -129,14 +154,14 @@ async def _controller(
     start_page = (await browser.pages())[0]
     await stealth(start_page)
 
-    if not await _nom_cookies(opts.gh_user, start_page):
+    if not await _nom_cookies(cookie_jar.read(), start_page):
         log("logging in to GitHub")
         cookies = await _login_flow(start_page, opts)
         if isinstance(cookies, RuntimeError):
             log(f"fatal: {cookies}")
             await browser.close()
             return
-        _save_user_cookies(opts.gh_user, cookies)
+        cookie_jar.save(cookies)
 
     while True:
         with suppress(Empty):
@@ -189,9 +214,8 @@ async def _login_flow(page: Page, opts: Opts) -> Cookies | RuntimeError:
     return t.cast(Cookies, cookies)
 
 
-async def _nom_cookies(user: str, page: Page) -> bool:
-    cookies = _get_user_cookies(user)
-    if cookies is None:
+async def _nom_cookies(cookies: Cookies | None, page: Page) -> bool:
+    if cookies is None or not cookies:
         return False
 
     if any(_is_close_to_expiry(c.get("expires", "-1")) for c in cookies):
@@ -201,18 +225,6 @@ async def _nom_cookies(user: str, page: Page) -> bool:
     debug("all cookies are fresh, nom nom nom")
     await aio.gather(*[page.setCookie(c) for c in cookies])
     return True
-
-
-def _save_user_cookies(user: str, cookies: Cookies) -> None:
-    COOKIE_JAR.parent.mkdir(parents=True, exist_ok=True)
-    existing = json.loads(COOKIE_JAR.read_text()) if COOKIE_JAR.exists() else {}
-    COOKIE_JAR.write_text(json.dumps({**existing, user: cookies}))
-
-
-def _get_user_cookies(user: str) -> Cookies | None:
-    if not COOKIE_JAR.exists():
-        return None
-    return t.cast(Cookies, json.loads(COOKIE_JAR.read_text()).get(user))
 
 
 def _is_close_to_expiry(ts: str) -> bool:
