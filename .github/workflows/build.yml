@@ -53,6 +53,10 @@ jobs:
         run: |
           source .venv/bin/activate
           ./hacks/pycheck-parallel
+      - name: Run unit tests
+        run: |
+          source .venv/bin/activate
+          pytest tests --cov
       - name: Run the entrypoints
         run: |
           source .venv/bin/activate
