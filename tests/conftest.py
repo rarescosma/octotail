@@ -1,6 +1,8 @@
 import socket
+from collections import deque
 from contextlib import contextmanager
 from copy import deepcopy
+from queue import Empty
 
 import pytest
 
@@ -25,8 +27,8 @@ def bound_socket():
 
 
 class MockQueue:
-    def __init__(self):
-        self.inner = []
+    def __init__(self, values: list | None):
+        self.inner = deque([] if values is None else deepcopy(values))
 
     def put_nowait(self, val):
         self.inner.append(val)
@@ -34,13 +36,22 @@ class MockQueue:
     def put(self, val):
         self.put_nowait(val)
 
+    def get_nowait(self):
+        try:
+            return self.inner.popleft()
+        except IndexError:
+            raise Empty
+
+    def get(self):
+        return self.get_nowait()
+
     def report(self):
-        return deepcopy(self.inner)
+        return deepcopy(list(self.inner))
 
 
 @pytest.fixture(scope="function")
 def mock_queue():
-    def factory():
-        return MockQueue()
+    def factory(values: list | None = None):
+        return MockQueue(values)
 
     return factory
