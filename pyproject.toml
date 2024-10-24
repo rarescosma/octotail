@@ -91,10 +91,14 @@ lint.extend-select = [
   "UP",
   "W",
 ]
-lint.ignore = ["B010", "C901", "COM", "D", "E501", "TRY003", "PLR0912"]
+lint.ignore = [
+  "B010",   # need setattr for mypy anger management
+  "TRY003", # we rely on imported exception classes for error handling
+]
 
 [tool.ruff.lint.per-file-ignores]
-"**/tests/*" = ["PLR0913", "PLR2004"]
+"**/tests/*" = ["PLR0913", "PLR2004"]  # magic-values + too-many-arguments
+"octotail/{browser,x}.py" = ["PLR0912", "C901"]  # too-complex + too-many-branches
 
 [tool.pytest.ini_options]
 asyncio_default_fixture_loop_scope = "function"
