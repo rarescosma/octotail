@@ -127,6 +127,7 @@ def test_cannot_find_free_port(bound_socket):
     [
         ([], []),
         (["", ""], [""]),
+        (["", "", "foo"], ["", "foo"]),
         (["foo", ""], ["foo", ""]),
         (["foo", "", False, "bar"], ["foo", "", "bar"]),
         (["foo", *([""] * 100), "bar"], ["foo", "", "bar"]),
