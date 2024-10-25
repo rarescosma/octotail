@@ -1,5 +1,6 @@
 import importlib
 import io
+from collections import deque
 from unittest.mock import patch
 
 import pytest
@@ -95,14 +96,11 @@ def test_perform_io():
     ],
 )
 def test_retries(num_tries: int, values: list, res):
-    def __generator():
-        yield from values
-
-    _generator = __generator()
+    deq = deque(values)
 
     @utils.retries(num_tries, 0)
     def _inner():
-        return next(_generator)
+        return deq.popleft()
 
     got = _inner()
     if isinstance(res, Failure):

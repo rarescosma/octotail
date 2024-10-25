@@ -1,5 +1,6 @@
 import threading
 import typing as t
+from collections import deque
 from unittest.mock import MagicMock, PropertyMock, call
 
 import pytest
@@ -95,13 +96,10 @@ def test_filter_runs(opts: Opts, input_runs, output_runs):
     ],
 )
 def test_get_active_run(list_results, expected):
-    def __generator():
-        yield from list_results
-
-    _generator = __generator()
+    deq = deque(list_results)
 
     def _run_lister(*_, **__):
-        return next(_generator)
+        return deq.popleft()
 
     client = MagicMock()
     client.get_repo.return_value = IOSuccess("repo-id")
