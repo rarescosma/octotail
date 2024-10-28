@@ -24,7 +24,7 @@ git clone git@github.com:getbettr/octotail-e2e.git
 
 # push an empty commit
 pushd octotail-e2e
-git commit --allow-empty -m "$(date "+%F@%T") e2e trigger"
+git commit --allow-empty -m "$(date "+%F@%T") e2e trigger: ${OCTOTAIL_REF}"
 git push origin --force
 
 # octotail setup
