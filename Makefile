@@ -19,3 +19,11 @@ pycheck:
 
 cov:
 	pytest tests --cov && coverage html
+
+e2e-image:
+	docker build e2e -f e2e/Dockerfile -t ghcr.io/rarescosma/octotail-e2e:latest
+
+push-e2e-image:
+	docker push ghcr.io/rarescosma/octotail-e2e:latest
+
+.PHONY: install bump pycheck cov e2e-image push-e2e-image
