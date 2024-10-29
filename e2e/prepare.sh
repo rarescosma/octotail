@@ -34,6 +34,6 @@ __EOF__
 chown -R ${USER_NAME}: /home/$USER_NAME/.ssh
 
 grep -vE '^e2e' /etc/sudoers > /etc/sudoers.new && mv -f /etc/sudoers.new /etc/sudoers
-echo "$USER_NAME ALL = NOPASSWD: /sbin/trust" >>/etc/sudoers
+echo "$USER_NAME ALL = NOPASSWD: /sbin/trust,/sbin/chown" >>/etc/sudoers
 
 rm -rf /var/cache /var/lib/pacman /home/$USER_NAME/.cache
