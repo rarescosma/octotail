@@ -15,9 +15,6 @@ jobs:
     runs-on: arc-octotail
     steps:
       - uses: actions/checkout@v4
-      - name: Env
-        run: |
-          env | sort
       - name: Login to ghcr.io
         uses: docker/login-action@v3
         with:
