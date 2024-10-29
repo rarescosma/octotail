@@ -2,8 +2,8 @@
 
 set -eux
 
-# install sudo
-pacman -Sy --quiet --noconfirm sudo vi git binutils fakeroot debugedit openssh oath-toolkit
+# install sudo + makepgk dependencies
+pacman -Sy --quiet --noconfirm sudo git binutils fakeroot debugedit openssh oath-toolkit
 
 # install paru
 PARU_VERSION=v2.0.4
@@ -18,9 +18,7 @@ USER_NAME=e2e
 useradd -m $USER_NAME
 
 # god mode
-grep -q $USER_NAME /etc/sudoers || {
-  echo "$USER_NAME ALL=(ALL) NOPASSWD:ALL" | EDITOR='tee -a' visudo
-}
+echo "$USER_NAME ALL=(ALL) NOPASSWD:ALL" >>/etc/sudoers
 
 # install chromium + uv/uvx + gh
 sudo -u $USER_NAME bash -x -c "paru -S --noconfirm ungoogled-chromium-bin uv github-cli; uv python install 3.12"
@@ -34,5 +32,8 @@ Host *
    LogLevel ERROR
 __EOF__
 chown -R ${USER_NAME}: /home/$USER_NAME/.ssh
+
+grep -vE '^e2e' /etc/sudoers > /etc/sudoers.new && mv -f /etc/sudoers.new /etc/sudoers
+echo "$USER_NAME ALL = NOPASSWD: /sbin/trust" >>/etc/sudoers
 
 rm -rf /var/cache /var/lib/pacman /home/$USER_NAME/.cache
