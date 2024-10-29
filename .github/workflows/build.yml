@@ -63,9 +63,27 @@ jobs:
           octotail --help
           octotailx --help
 
+  e2e-test:
+    name: e2e-test
+    runs-on: arc-octotail
+    steps:
+      - uses: actions/checkout@v4
+      - name: Login to ghcr.io
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GHCR_TOKEN }}
+      - name: Dockerized tests
+        run: |
+          docker run --rm -u 1000:1000 -v $(pwd)/e2e:/repo \
+            -e HUBBER_CREDS="${{ secrets.HUBBER_CREDS }}" \
+            -e HUBBER_KEY="${{ secrets.HUBBER_KEY }}" \
+            ghcr.io/rarescosma/octotail-e2e:latest ./run.sh $GITHUB_SHA
+
   publish-wheels:
     name: publish-wheels
-    needs: [ "get-versions", "smoke-test" ]
+    needs: [ "get-versions", "smoke-test", "e2e-test" ]
     runs-on: arc-octotail
     steps:
       - uses: actions/checkout@v4
