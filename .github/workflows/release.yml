@@ -11,7 +11,7 @@ permissions:
 jobs:
   create-release:
     name: create-release
-    runs-on: arc-octotail
+    runs-on: arc-gb
     steps:
       - uses: actions/checkout@v4
         with:

@@ -12,7 +12,7 @@ permissions:
 jobs:
   e2e-test:
     name: e2e-test
-    runs-on: arc-octotail
+    runs-on: arc-gb
     steps:
       - uses: actions/checkout@v4
       - name: Login to ghcr.io

@@ -13,7 +13,7 @@ permissions:
 jobs:
   test:
     name: test
-    runs-on: arc-octotail
+    runs-on: arc-gb
     steps:
       - uses: actions/checkout@v4
       - name: Has uv

@@ -8,7 +8,7 @@ on:
 jobs:
   sleeper_one:
     name: sleeper_one
-    runs-on: arc-octotail
+    runs-on: arc-gb
     steps:
       - uses: actions/checkout@v4
       - run: |
@@ -19,7 +19,7 @@ jobs:
   sleeper_two:
     name: sleeper_two
     needs: ["sleeper_one"]
-    runs-on: arc-octotail
+    runs-on: arc-gb
     steps:
       - uses: actions/checkout@v4
       - run: |
@@ -30,7 +30,7 @@ jobs:
   sleeper_three:
     name: sleeper_three
     needs: ["sleeper_one"]
-    runs-on: arc-octotail
+    runs-on: arc-gb
     steps:
       - uses: actions/checkout@v4
       - run: |
@@ -41,7 +41,7 @@ jobs:
   sleeper_two_a:
     name: sleeper_two_a
     needs: ["sleeper_one"]
-    runs-on: arc-octotail
+    runs-on: arc-gb
     steps:
       - uses: actions/checkout@v4
       - run: |
@@ -52,7 +52,7 @@ jobs:
   sleeper_three_a:
     name: sleeper_three_a
     needs: ["sleeper_one"]
-    runs-on: arc-octotail
+    runs-on: arc-gb
     steps:
       - uses: actions/checkout@v4
       - run: |
@@ -63,7 +63,7 @@ jobs:
   sleeper_four:
     name: sleeper_four
     needs: ["sleeper_one", "sleeper_two", "sleeper_three", "sleeper_two_a", "sleeper_three_a"]
-    runs-on: arc-octotail
+    runs-on: arc-gb
     steps:
       - uses: actions/checkout@v4
       - run: |

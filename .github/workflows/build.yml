@@ -13,7 +13,7 @@ permissions:
 jobs:
   get-versions:
     name: get-versions
-    runs-on: arc-octotail
+    runs-on: arc-gb
     steps:
       - uses: actions/checkout@v4
       - name: Grab the version from __init__.py
@@ -30,7 +30,7 @@ jobs:
 
   smoke-test:
     name: smoke-test
-    runs-on: arc-octotail
+    runs-on: arc-gb
     steps:
       - uses: actions/checkout@v4
       - name: Has uv
@@ -65,7 +65,7 @@ jobs:
 
   e2e-test:
     name: e2e-test
-    runs-on: arc-octotail
+    runs-on: arc-gb
     steps:
       - uses: actions/checkout@v4
       - name: Login to ghcr.io
@@ -84,7 +84,7 @@ jobs:
   publish-wheels:
     name: publish-wheels
     needs: [ "get-versions", "smoke-test", "e2e-test" ]
-    runs-on: arc-octotail
+    runs-on: arc-gb
     steps:
       - uses: actions/checkout@v4
       - name: Has uv
@@ -143,7 +143,7 @@ jobs:
     if: "github.ref == 'refs/heads/ci' && !contains(github.event.head_commit.message, '[cron]')"
     name: promote-release
     needs: [ "publish-wheels", "get-versions" ]
-    runs-on: arc-octotail
+    runs-on: arc-gb
     steps:
       - uses: actions/checkout@v4
       - name: Promote release
