@@ -2,15 +2,15 @@
 
 <p>
 <a href="https://pypi.org/project/octotail/"><img alt="PyPI" src="https://img.shields.io/pypi/v/octotail"></a>
-<a href="https://github.com/rarescosma/octotail/blob/main/UNLICENSE"><img alt="License: Unlicense" src="https://img.shields.io/badge/license-Unlicense-blue.svg"></a>
-<a href="https://github.com/rarescosma/octotail/actions"><img alt="Actions Status" src="https://github.com/rarescosma/octotail/workflows/test/badge.svg"></a>
-<a href="https://codecov.io/github/rarescosma/octotail"><img alt="Code coverage" src="https://codecov.io/github/rarescosma/octotail/graph/badge.svg?token=3CR6BVTC7O"/></a>
-<a href="https://github.com/rarescosma/octotail"><img alt="Code style: black" src="https://img.shields.io/badge/code%20style-black-000000.svg"></a>
+<a href="https://github.com/getbettr/octotail/blob/main/UNLICENSE"><img alt="License: Unlicense" src="https://img.shields.io/badge/license-Unlicense-blue.svg"></a>
+<a href="https://github.com/getbettr/octotail/actions"><img alt="Actions Status" src="https://github.com/getbettr/octotail/workflows/test/badge.svg"></a>
+<a href="https://codecov.io/github/getbettr/octotail"><img alt="Code coverage" src="https://codecov.io/github/getbettr/octotail/graph/badge.svg?token=3CR6BVTC7O"/></a>
+<a href="https://github.com/getbettr/octotail"><img alt="Code style: black" src="https://img.shields.io/badge/code%20style-black-000000.svg"></a>
 </p>
 
 Live tail GitHub Action runs on `git push`. It's cursed.
 
-![](https://raw.githubusercontent.com/rarescosma/octotail/a9c662e5f669c22c591d93c32cdeca68e1a05aec/var/demo.gif)
+![](https://raw.githubusercontent.com/getbettr/octotail/a9c662e5f669c22c591d93c32cdeca68e1a05aec/var/demo.gif)
 
 ## Motivation
 
@@ -94,7 +94,7 @@ echo "alias octotailx='$(pwd)/.venv/bin/python3 $(pwd)/.venv/bin/octotailx'" >> 
 ### Via git and make
 
 ```shell
-git clone https://github.com/rarescosma/octotail.git
+git clone https://github.com/getbettr/octotail.git
 cd octotail
 make
 sudo make install

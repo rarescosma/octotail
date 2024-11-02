@@ -12,37 +12,37 @@ from octotail.git import GitRemote
     [
         ("", Success([])),
         (
-            "origin\tgit@github.com:rarescosma/octotail.git",
-            Success([GitRemote(name="origin", url="git@github.com:rarescosma/octotail.git")]),
+            "origin\tgit@github.com:getbettr/octotail.git",
+            Success([GitRemote(name="origin", url="git@github.com:getbettr/octotail.git")]),
         ),
         (
-            "origin git@github.com:rarescosma/octotail.git",
-            Success([GitRemote(name="origin", url="git@github.com:rarescosma/octotail.git")]),
+            "origin git@github.com:getbettr/octotail.git",
+            Success([GitRemote(name="origin", url="git@github.com:getbettr/octotail.git")]),
         ),
         (
-            "origin       git@github.com:rarescosma/octotail.git",
-            Success([GitRemote(name="origin", url="git@github.com:rarescosma/octotail.git")]),
+            "origin       git@github.com:getbettr/octotail.git",
+            Success([GitRemote(name="origin", url="git@github.com:getbettr/octotail.git")]),
         ),
         (
-            "origin  \t  \t   git@github.com:rarescosma/octotail.git",
-            Success([GitRemote(name="origin", url="git@github.com:rarescosma/octotail.git")]),
+            "origin  \t  \t   git@github.com:getbettr/octotail.git",
+            Success([GitRemote(name="origin", url="git@github.com:getbettr/octotail.git")]),
         ),
         (
             "gibberish",
             Failure(TypeError("GitRemote")),
         ),
         (
-            "origin  \t  \t   git@github.com:rarescosma/octotail.git"
+            "origin  \t  \t   git@github.com:getbettr/octotail.git"
             "\ngh-priv git@github.com:getbettr/octotail-priv.git",
             Success(
                 [
                     GitRemote(name="gh-priv", url="git@github.com:getbettr/octotail-priv.git"),
-                    GitRemote(name="origin", url="git@github.com:rarescosma/octotail.git"),
+                    GitRemote(name="origin", url="git@github.com:getbettr/octotail.git"),
                 ]
             ),
         ),
         (
-            "origin  \t  \t   git@github.com:rarescosma/octotail.git"
+            "origin  \t  \t   git@github.com:getbettr/octotail.git"
             "\ngibberish"
             "\ngh-priv git@github.com:getbettr/octotail-priv.git",
             Failure(TypeError("GitRemote")),
@@ -115,10 +115,10 @@ def test_extract_github_repo(input_remote, expected):
         (
             IOSuccess(
                 "gh-priv git@github.com:getbettr/octotail-priv.git"
-                "\norigin  git@github.com:rarescosma/octotail.git"
+                "\norigin  git@github.com:getbettr/octotail.git"
             ),
             lambda r: r.name == "origin",
-            IOSuccess([GitRemote(name="origin", url="git@github.com:rarescosma/octotail.git")]),
+            IOSuccess([GitRemote(name="origin", url="git@github.com:getbettr/octotail.git")]),
         ),
     ],
 )
@@ -149,7 +149,7 @@ def test_get_remotes(monkeypatch, check_git_lines, filter_fn, expected):
         (
             IOSuccess(
                 "gh-priv git@github.com:getbettr/octotail-priv.git"
-                "\norigin  git@github.com:rarescosma/octotail.git"
+                "\norigin  git@github.com:getbettr/octotail.git"
             ),
             Failure.from_failure("too many remotes"),
         ),

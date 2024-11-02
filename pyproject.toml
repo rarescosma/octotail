@@ -39,9 +39,9 @@ octotail = "octotail.main:_main"
 octotailx = "octotail.x:_main"
 
 [project.urls]
-Documentation = "https://github.com/rarescosma/octotail#readme"
-Repository = "https://github.com/rarescosma/octotail"
-Issues = "https://github.com/rarescosma/octotail/issues"
+Documentation = "https://github.com/getbettr/octotail#readme"
+Repository = "https://github.com/getbettr/octotail"
+Issues = "https://github.com/getbettr/octotail/issues"
 Homepage = "https://getbetter.ro/projects/#octotail"
 
 [tool.uv]

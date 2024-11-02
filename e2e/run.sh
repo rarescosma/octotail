@@ -7,7 +7,7 @@ sudo chown -R $(id -u):$(id -g) $DOT
 
 OCTOTAIL_REF="${1:-main}"
 
-UVX="uvx --from=git+https://github.com/rarescosma/octotail.git@${OCTOTAIL_REF}"
+UVX="uvx --from=git+https://github.com/getbettr/octotail.git@${OCTOTAIL_REF}"
 
 # generate mitmproxy cert and trust it
 sudo trust anchor "$($UVX octotailx generate-cert)"
