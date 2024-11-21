@@ -26,7 +26,7 @@ dependencies = [
   "pyppeteer>=2.0",
   "pyppeteer-stealth>=2.7",
   "pyxdg>=0.28",
-  "returns>=0.21",
+  "returns>=0.23",
   "rich>=13.9",
   "shellingham>=1.5",
   "termcolor>=2.5",
@@ -57,7 +57,6 @@ dev-dependencies = [
   "pytest-asyncio>=0.24.0",
   "pytest-cov>=5.0.0",
   "pytest>=8.3.3",
-  "returns[compatible-mypy]>=0.21.0",
   "ruff>=0.6.9",
   "vulture>=2",
 ]
